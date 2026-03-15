@@ -1,0 +1,32 @@
+﻿Building Windows application...                                 
+flutter : LINK : fatal 
+error LNK1168: cannot 
+open C:\Users\ACER\Docu
+ments\Workspace\Project
+s\FishCashing\build\win
+dows\x64\runner\Debug\f
+ishcash_pos.exe for 
+writing [C:\Users\ACER\
+Documents\Workspace\Pro
+jects\FishCashing\build
+\windows\x64\runner\fis
+hcash_pos.vcxproj]
+At line:1 char:1
++ flutter build 
+windows --debug 2>&1 | 
+Out-File -FilePath 
+C:\Users\ACER ...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (LINK : fatal    
+ er...sh_pos.vcxpro    
+j]:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+Building Windows application...                                    49.1s
+Build process failed.

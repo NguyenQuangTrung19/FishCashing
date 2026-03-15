@@ -1,0 +1,10 @@
+﻿Running build hooks...Running build hooks...  0s drift_dev on 160 inputs; lib/app/app.dart
+  16s drift_dev on 160 inputs: 1 same; spent 12s┬áanalyzing, 3s┬áresolving; lib/app/router.dart
+  17s drift_dev on 160 inputs: 12 skipped, 9 output, 18 same; spent 13s┬áanalyzing, 3s┬áresolving; test/widget_test.dart
+  18s drift_dev on 160 inputs: 12 skipped, 9 output, 19 same; spent 14s┬áanalyzing, 3s┬áresolving; lib/app/app.dart
+  19s drift_dev on 160 inputs: 17 skipped, 10 output, 21 same; spent 16s┬áanalyzing, 3s┬áresolving; lib/data/database/daos/category_dao.dart
+  20s drift_dev on 160 inputs: 17 skipped, 10 output, 26 same; spent 17s┬áanalyzing, 3s┬áresolving; lib/data/database/tables/tables.dart
+  21s drift_dev on 160 inputs: 76 skipped, 18 output, 44 same, 22 no-op; spent 17s┬áanalyzing, 3s┬áresolving
+  0s source_gen:combining_builder on 80 inputs; lib/app/app.dart
+  0s source_gen:combining_builder on 80 inputs: 71 skipped, 6 same, 3 no-op
+  Built with build_runner/jit in 23s; wrote 68 outputs.
