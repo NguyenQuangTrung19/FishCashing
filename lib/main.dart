@@ -14,6 +14,7 @@ import 'package:fishcash_pos/data/repositories/product_repository.dart';
 import 'package:fishcash_pos/data/repositories/partner_repository.dart';
 import 'package:fishcash_pos/data/repositories/trade_order_repository.dart';
 import 'package:fishcash_pos/data/repositories/trading_session_repository.dart';
+import 'package:fishcash_pos/data/repositories/dashboard_repository.dart';
 import 'package:fishcash_pos/presentation/categories/bloc/category_bloc.dart';
 import 'package:fishcash_pos/presentation/categories/bloc/category_event_state.dart';
 import 'package:fishcash_pos/presentation/products/bloc/product_bloc.dart';
@@ -38,6 +39,8 @@ void main() {
   );
   final tradingSessionRepository =
       TradingSessionRepository(database.tradingSessionDao);
+  final dashboardRepository =
+      DashboardRepository(database.tradingSessionDao);
 
   runApp(
     MultiRepositoryProvider(
@@ -45,6 +48,7 @@ void main() {
         RepositoryProvider.value(value: partnerRepository),
         RepositoryProvider.value(value: tradeOrderRepository),
         RepositoryProvider.value(value: tradingSessionRepository),
+        RepositoryProvider.value(value: dashboardRepository),
       ],
       child: MultiBlocProvider(
         providers: [

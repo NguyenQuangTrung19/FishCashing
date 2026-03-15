@@ -38,6 +38,9 @@ dependencies:
   printing: ^5.14.1
   file_picker: ^8.3.7
 
+  # Charts
+  fl_chart: ^0.70.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

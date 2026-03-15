@@ -4,6 +4,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:fishcash_pos/presentation/shared/animated_refresh_button.dart';
+
 import 'package:fishcash_pos/domain/models/category_model.dart';
 import 'package:fishcash_pos/presentation/categories/bloc/category_bloc.dart';
 import 'package:fishcash_pos/presentation/categories/bloc/category_event_state.dart';
@@ -18,9 +20,7 @@ class CategoryPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Quản lý Danh mục'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Tải lại',
+          AnimatedRefreshButton(
             onPressed: () {
               context
                   .read<CategoryBloc>()

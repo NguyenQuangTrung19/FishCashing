@@ -4,6 +4,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:fishcash_pos/presentation/shared/animated_refresh_button.dart';
+
 import 'package:fishcash_pos/core/theme/ocean_theme.dart';
 import 'package:fishcash_pos/core/utils/validators.dart';
 import 'package:fishcash_pos/domain/models/partner_model.dart';
@@ -20,8 +22,7 @@ class PartnerPage extends StatelessWidget {
         appBar: AppBar(
           title: const Text('Quản lý Đối tác'),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
+            AnimatedRefreshButton(
               onPressed: () {
                 context
                     .read<PartnerBloc>()

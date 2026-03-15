@@ -2,7 +2,9 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Added this import
+import 'package:flutter/services.dart';
+
+import 'package:fishcash_pos/presentation/shared/animated_refresh_button.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:decimal/decimal.dart';
 
@@ -25,9 +27,7 @@ class ProductPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Quản lý Sản phẩm'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Tải lại',
+          AnimatedRefreshButton(
             onPressed: () {
               context.read<ProductBloc>().add(const ProductsLoadRequested());
             },
@@ -107,14 +107,14 @@ class ProductPage extends StatelessWidget {
           return LayoutBuilder(
             builder: (context, constraints) {
               final crossAxisCount =
-                  constraints.maxWidth > 900 ? 4 : (constraints.maxWidth > 600 ? 3 : 2);
+                  constraints.maxWidth > 900 ? 5 : (constraints.maxWidth > 600 ? 4 : 3);
               return GridView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: crossAxisCount,
-                  childAspectRatio: 0.75,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
+                  childAspectRatio: 0.85,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
                 ),
                 itemCount: state.products.length,
                 itemBuilder: (context, index) {
@@ -338,7 +338,7 @@ class _ProductCard extends StatelessWidget {
         onTap: onEdit,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -365,7 +365,7 @@ class _ProductCard extends StatelessWidget {
                   child: Center(
                     child: Icon(
                       Icons.set_meal,
-                      size: 48,
+                      size: 36,
                       color: product.isActive
                           ? OceanTheme.oceanPrimary.withValues(alpha: 0.7)
                           : colorScheme.onSurfaceVariant.withValues(alpha: 0.4),

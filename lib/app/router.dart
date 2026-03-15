@@ -83,9 +83,12 @@ final GoRouter appRouter = GoRouter(
         ),
         GoRoute(
           path: '/trading',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: TradingPage(),
-          ),
+          pageBuilder: (context, state) {
+            final sessionId = state.uri.queryParameters['sessionId'];
+            return NoTransitionPage(
+              child: TradingPage(initialSessionId: sessionId),
+            );
+          },
         ),
         GoRoute(
           path: '/products',

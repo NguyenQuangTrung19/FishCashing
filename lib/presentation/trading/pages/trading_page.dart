@@ -16,6 +16,7 @@ import 'package:fishcash_pos/domain/models/partner_model.dart';
 import 'package:fishcash_pos/presentation/trading/bloc/trading_bloc.dart';
 import 'package:fishcash_pos/presentation/trading/widgets/order_creation_view.dart';
 import 'package:fishcash_pos/presentation/trading/widgets/invoice_export_dialog.dart';
+import 'package:fishcash_pos/presentation/shared/animated_refresh_button.dart';
 import 'package:fishcash_pos/presentation/partners/bloc/partner_bloc.dart';
 import 'package:fishcash_pos/presentation/pos/bloc/pos_bloc.dart';
 
@@ -23,7 +24,9 @@ import 'package:fishcash_pos/presentation/pos/bloc/pos_bloc.dart';
 enum _ViewMode { list, detail, createOrder }
 
 class TradingPage extends StatefulWidget {
-  const TradingPage({super.key});
+  final String? initialSessionId;
+
+  const TradingPage({super.key, this.initialSessionId});
 
   @override
   State<TradingPage> createState() => _TradingPageState();
@@ -36,6 +39,21 @@ class _TradingPageState extends State<TradingPage> {
   String? _selectedPartnerId;
   String? _selectedPartnerName;
   String? _editingOrderId; // non-null = editing existing order
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-navigate to session detail if initialSessionId is provided
+    if (widget.initialSessionId != null) {
+      _selectedSessionId = widget.initialSessionId;
+      _viewMode = _ViewMode.detail;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context
+            .read<TradingBloc>()
+            .add(TradingSessionDetailRequested(widget.initialSessionId!));
+      });
+    }
+  }
 
   void _goToList() {
     setState(() {
@@ -387,8 +405,7 @@ class _SessionListPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Giao dịch'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
+          AnimatedRefreshButton(
             onPressed: () {
               context.read<TradingBloc>().add(const TradingSessionsLoadRequested());
             },
@@ -673,77 +690,71 @@ class _SessionDetailPage extends StatelessWidget {
             ? 'Phiên ${AppFormatters.dateTime(session.createdAt)}'
             : 'Chi tiết phiên'),
         actions: [
-          // Export invoice button — styled and prominent
-          if (session != null && state.currentOrders.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => showSessionExportDialog(
-                    context: context,
-                    session: session,
-                    orders: state.currentOrders,
+          _AnimatedRefreshButton(
+            onPressed: () {
+              if (session != null) {
+                context.read<TradingBloc>().add(TradingSessionDetailRequested(session.id));
+              }
+            },
+          ),
+        ],
+      ),
+      bottomNavigationBar: session != null
+          ? Container(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, -2),
                   ),
-                  borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFE53935), Color(0xFFFF7043)],
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFE53935)
-                              .withValues(alpha: 0.3),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
+                ],
+              ),
+              child: SafeArea(
+                child: Row(
+                  children: [
+                    // Export invoice button
+                    if (state.currentOrders.isNotEmpty) ...[
+                      Expanded(
+                        child: _ActionButton(
+                          icon: Icons.picture_as_pdf,
+                          label: 'Xuất HĐ',
+                          gradient: const [Color(0xFFE53935), Color(0xFFFF7043)],
+                          onPressed: () => showSessionExportDialog(
+                            context: context,
+                            session: session,
+                            orders: state.currentOrders,
+                          ),
                         ),
-                      ],
+                      ),
+                      const SizedBox(width: 10),
+                    ],
+                    // Buy order button
+                    Expanded(
+                      child: _ActionButton(
+                        icon: Icons.shopping_cart,
+                        label: 'Đơn mua vào',
+                        gradient: [OceanTheme.buyBlue, OceanTheme.buyBlue.withValues(alpha: 0.7)],
+                        onPressed: onCreateBuy,
+                      ),
                     ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.picture_as_pdf,
-                            color: Colors.white, size: 18),
-                        SizedBox(width: 6),
-                        Text('Xuất HĐ',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            )),
-                      ],
+                    const SizedBox(width: 10),
+                    // Sell order button
+                    Expanded(
+                      child: _ActionButton(
+                        icon: Icons.storefront,
+                        label: 'Đơn bán ra',
+                        gradient: [OceanTheme.sellGreen, OceanTheme.sellGreen.withValues(alpha: 0.7)],
+                        onPressed: onCreateSell,
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
-            ),
-        ],
-      ),
-      // Two FABs: Buy + Sell
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: 'buy',
-            backgroundColor: OceanTheme.buyBlue,
-            onPressed: onCreateBuy,
-            icon: const Icon(Icons.shopping_cart, color: Colors.white),
-            label: const Text('Đơn mua vào', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton.extended(
-            heroTag: 'sell',
-            backgroundColor: OceanTheme.sellGreen,
-            onPressed: onCreateSell,
-            icon: const Icon(Icons.storefront, color: Colors.white),
-            label: const Text('Đơn bán ra', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
+            )
+          : null,
       body: _SessionDetailContent(
         state: state,
         session: session,
@@ -1036,6 +1047,142 @@ class _SummaryTile extends StatelessWidget {
                       fontWeight: FontWeight.w800, color: color),
                   maxLines: 1, overflow: TextOverflow.ellipsis),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================
+// ACTION BUTTON (bottom bar)
+// ============================================
+
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final List<Color> gradient;
+  final VoidCallback onPressed;
+
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.gradient,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: gradient),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: gradient.first.withValues(alpha: 0.3),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 18),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================
+// ANIMATED REFRESH BUTTON
+// ============================================
+
+class _AnimatedRefreshButton extends StatefulWidget {
+  final VoidCallback onPressed;
+
+  const _AnimatedRefreshButton({required this.onPressed});
+
+  @override
+  State<_AnimatedRefreshButton> createState() => _AnimatedRefreshButtonState();
+}
+
+class _AnimatedRefreshButtonState extends State<_AnimatedRefreshButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handlePress() {
+    _controller.forward(from: 0);
+    widget.onPressed();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _handlePress,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  OceanTheme.oceanPrimary.withValues(alpha: 0.1),
+                  OceanTheme.oceanFoam.withValues(alpha: 0.1),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: RotationTransition(
+              turns: Tween(begin: 0.0, end: 1.0).animate(
+                CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+              ),
+              child: Icon(
+                Icons.refresh_rounded,
+                color: OceanTheme.oceanPrimary,
+                size: 22,
+              ),
+            ),
           ),
         ),
       ),

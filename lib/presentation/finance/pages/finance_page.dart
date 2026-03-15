@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:decimal/decimal.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:fishcash_pos/presentation/shared/animated_refresh_button.dart';
+
 import 'package:fishcash_pos/core/theme/ocean_theme.dart';
 import 'package:fishcash_pos/core/utils/formatters.dart';
 import 'package:fishcash_pos/data/database/daos/trade_order_dao.dart';
@@ -75,10 +77,7 @@ class _FinancePageState extends State<FinancePage> {
       appBar: AppBar(
         title: const Text('Tài chính'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-          ),
+          AnimatedRefreshButton(onPressed: _loadData),
         ],
       ),
       body: _loading
