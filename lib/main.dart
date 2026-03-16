@@ -16,6 +16,7 @@ import 'package:fishcash_pos/data/repositories/trade_order_repository.dart';
 import 'package:fishcash_pos/data/repositories/trading_session_repository.dart';
 import 'package:fishcash_pos/data/repositories/dashboard_repository.dart';
 import 'package:fishcash_pos/data/repositories/store_info_repository.dart';
+import 'package:fishcash_pos/data/repositories/finance_repository.dart';
 import 'package:fishcash_pos/presentation/categories/bloc/category_bloc.dart';
 import 'package:fishcash_pos/presentation/categories/bloc/category_event_state.dart';
 import 'package:fishcash_pos/presentation/products/bloc/product_bloc.dart';
@@ -24,6 +25,7 @@ import 'package:fishcash_pos/presentation/partners/bloc/partner_bloc.dart';
 import 'package:fishcash_pos/presentation/pos/bloc/pos_bloc.dart';
 import 'package:fishcash_pos/presentation/trading/bloc/trading_bloc.dart';
 import 'package:fishcash_pos/presentation/settings/bloc/store_info_bloc.dart';
+import 'package:fishcash_pos/presentation/finance/bloc/finance_bloc.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,6 +46,7 @@ void main() {
   final dashboardRepository =
       DashboardRepository(database.tradingSessionDao);
   final storeInfoRepository = StoreInfoRepository(database.storeInfoDao);
+  final financeRepository = FinanceRepository(database.tradeOrderDao);
 
   runApp(
     MultiRepositoryProvider(
@@ -53,6 +56,7 @@ void main() {
         RepositoryProvider.value(value: tradingSessionRepository),
         RepositoryProvider.value(value: dashboardRepository),
         RepositoryProvider.value(value: storeInfoRepository),
+        RepositoryProvider.value(value: financeRepository),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -79,6 +83,10 @@ void main() {
           BlocProvider<StoreInfoBloc>(
             create: (_) => StoreInfoBloc(storeInfoRepository)
               ..add(const StoreInfoLoadRequested()),
+          ),
+          BlocProvider<FinanceBloc>(
+            create: (_) => FinanceBloc(financeRepository)
+              ..add(const FinanceLoadRequested()),
           ),
         ],
         child: const FishCashApp(),

@@ -186,4 +186,48 @@ class TradeOrderDao extends DatabaseAccessor<AppDatabase>
     }
     return result;
   }
+
+  /// Get orders within a date range, optionally filtered by type
+  Future<List<TradeOrderWithDetails>> getOrdersByDateRange(
+    DateTime from,
+    DateTime to, {
+    String? orderType,
+    int? limit,
+  }) async {
+    final query = select(tradeOrders).join([
+      leftOuterJoin(partners, partners.id.equalsExp(tradeOrders.partnerId)),
+    ])
+      ..where(tradeOrders.createdAt.isBiggerOrEqualValue(from) &
+          tradeOrders.createdAt.isSmallerOrEqualValue(to))
+      ..orderBy([OrderingTerm.desc(tradeOrders.createdAt)]);
+
+    if (orderType != null) {
+      query.where(tradeOrders.orderType.equals(orderType));
+    }
+    if (limit != null) {
+      query.limit(limit);
+    }
+
+    final rows = await query.get();
+    final result = <TradeOrderWithDetails>[];
+
+    for (final row in rows) {
+      final order = row.readTable(tradeOrders);
+      final partner = row.readTableOrNull(partners);
+      final items = await _getOrderItems(order.id);
+      result.add(TradeOrderWithDetails(
+        order: order,
+        partnerName: partner?.name,
+        items: items,
+      ));
+    }
+    return result;
+  }
+
+  /// Get all orders (for year picker / stats)
+  Future<List<TradeOrder>> getAllOrders() async {
+    return (select(tradeOrders)
+          ..orderBy([(o) => OrderingTerm.desc(o.createdAt)]))
+        .get();
+  }
 }

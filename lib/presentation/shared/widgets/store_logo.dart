@@ -41,7 +41,7 @@ class StoreLogo extends StatelessWidget {
             width: width,
             height: height,
             fit: fit,
-            errorBuilder: (_, __, ___) => Image.asset(
+            errorBuilder: (_, _, _) => Image.asset(
               _defaultAsset,
               width: width,
               height: height,
