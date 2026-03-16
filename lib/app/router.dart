@@ -13,6 +13,7 @@ import 'package:fishcash_pos/presentation/products/pages/product_page.dart';
 import 'package:fishcash_pos/presentation/partners/pages/partner_page.dart';
 import 'package:fishcash_pos/presentation/trading/pages/trading_page.dart';
 import 'package:fishcash_pos/presentation/finance/pages/finance_page.dart';
+import 'package:fishcash_pos/presentation/settings/pages/settings_page.dart';
 
 /// Navigation destination definition
 class AppDestination {
@@ -67,6 +68,12 @@ const List<AppDestination> appDestinations = [
     selectedIcon: Icons.account_balance_wallet,
     path: '/finance',
   ),
+  AppDestination(
+    label: 'Cài đặt',
+    icon: Icons.settings_outlined,
+    selectedIcon: Icons.settings,
+    path: '/settings',
+  ),
 ];
 
 final GoRouter appRouter = GoRouter(
@@ -112,6 +119,12 @@ final GoRouter appRouter = GoRouter(
           path: '/finance',
           pageBuilder: (context, state) => const NoTransitionPage(
             child: FinancePage(),
+          ),
+        ),
+        GoRoute(
+          path: '/settings',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: SettingsPage(),
           ),
         ),
       ],

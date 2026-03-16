@@ -8,8 +8,11 @@
 /// - Premium styled PDF with colored sections
 library;
 
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:decimal/decimal.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -157,16 +160,21 @@ class InvoiceService {
   // SESSION INVOICE (all / buy-only / sell-only)
   // =============================================
 
-  static pw.Document generateSessionInvoice({
+  static Future<pw.Document> generateSessionInvoice({
     required InvoiceFonts fonts,
     required TradingSessionModel session,
     required List<TradeOrderWithDetails> orders,
     InvoiceFilter filter = InvoiceFilter.all,
     String storeName = 'FishCash POS',
+    String storeAddress = '',
+    String storePhone = '',
+    String storeLogoPath = '',
     int sessionIndex = 1,
-  }) {
+  }) async {
     final invoiceCode =
         InvoiceCode.forFilter(filter, session.createdAt, index: sessionIndex);
+
+    final logoBytes = await _loadLogo(storeLogoPath);
 
     final pdf = pw.Document(
       author: storeName,
@@ -180,11 +188,14 @@ class InvoiceService {
         margin: const pw.EdgeInsets.all(28),
         header: (ctx) => _buildHeader(
           fonts: fonts,
-          storeName: storeName,
+          logoBytes: logoBytes,
           invoiceCode: invoiceCode,
           title: _filterTitle(filter),
           subtitle:
               'Ngày: ${AppFormatters.dateTime(session.createdAt)}',
+          storeName: storeName,
+          storeAddress: storeAddress,
+          storePhone: storePhone,
         ),
         footer: (ctx) => _buildFooter(ctx, storeName, fonts),
         build: (ctx) {
@@ -259,18 +270,23 @@ class InvoiceService {
   // SINGLE ORDER INVOICE
   // =============================================
 
-  static pw.Document generateSingleOrderInvoice({
+  static Future<pw.Document> generateSingleOrderInvoice({
     required InvoiceFonts fonts,
     required TradeOrderWithDetails order,
     String storeName = 'FishCash POS',
+    String storeAddress = '',
+    String storePhone = '',
+    String storeLogoPath = '',
     int orderIndex = 1,
-  }) {
+  }) async {
     final isBuy = order.order.orderType == 'buy';
     final invoiceCode = InvoiceCode.orderInvoice(
       order.order.createdAt,
       index: orderIndex,
     );
     final title = isBuy ? 'HÓA ĐƠN MUA HÀNG' : 'HÓA ĐƠN BÁN HÀNG';
+
+    final logoBytes = await _loadLogo(storeLogoPath);
 
     final pdf = pw.Document(
       author: storeName,
@@ -287,11 +303,14 @@ class InvoiceService {
           children: [
             _buildHeader(
               fonts: fonts,
-              storeName: storeName,
+              logoBytes: logoBytes,
               invoiceCode: invoiceCode,
               title: title,
               subtitle:
                   'Ngày: ${AppFormatters.dateTime(order.order.createdAt)}',
+              storeName: storeName,
+              storeAddress: storeAddress,
+              storePhone: storePhone,
             ),
             pw.SizedBox(height: 20),
             _buildInfoRow(order, fonts),
@@ -349,15 +368,36 @@ class InvoiceService {
   }
 
   // =============================================
+  // PRIVATE: LOGO LOADER
+  // =============================================
+
+  /// Load logo bytes from custom path or fallback to default asset.
+  static Future<Uint8List> _loadLogo(String customPath) async {
+    if (customPath.isNotEmpty) {
+      final file = File(customPath);
+      if (await file.exists()) {
+        return await file.readAsBytes();
+      }
+    }
+    // Fallback to default asset logo
+    return (await rootBundle.load('assets/images/logo_icon.png'))
+        .buffer
+        .asUint8List();
+  }
+
+  // =============================================
   // PRIVATE: HEADER
   // =============================================
 
   static pw.Widget _buildHeader({
     required InvoiceFonts fonts,
-    required String storeName,
+    required Uint8List logoBytes,
     required String invoiceCode,
     required String title,
     required String subtitle,
+    String storeName = '',
+    String storeAddress = '',
+    String storePhone = '',
   }) {
     return pw.Container(
       width: double.infinity,
@@ -368,12 +408,37 @@ class InvoiceService {
       ),
       child: pw.Column(
         children: [
-          pw.Text(storeName,
-              style: fonts.style(
-                fontSize: 24,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.white,
-              )),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.center,
+            children: [
+              pw.Image(
+                pw.MemoryImage(logoBytes),
+                width: 180,
+                fit: pw.BoxFit.contain,
+              ),
+            ],
+          ),
+          // Store name
+          if (storeName.isNotEmpty) ...[
+            pw.SizedBox(height: 6),
+            pw.Text(storeName,
+                style: fonts.style(
+                  fontSize: 14,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.white,
+                  letterSpacing: 0.5,
+                )),
+          ],
+          // Store contact info
+          if (storeAddress.isNotEmpty || storePhone.isNotEmpty) ...[
+            pw.SizedBox(height: 3),
+            if (storeAddress.isNotEmpty)
+              pw.Text(storeAddress,
+                  style: fonts.style(fontSize: 9, color: PdfColors.grey300)),
+            if (storePhone.isNotEmpty)
+              pw.Text('SĐT: $storePhone',
+                  style: fonts.style(fontSize: 9, color: PdfColors.grey300)),
+          ],
           pw.SizedBox(height: 6),
           pw.Container(
             padding:

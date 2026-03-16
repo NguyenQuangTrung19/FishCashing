@@ -16,6 +16,7 @@ import 'package:fishcash_pos/domain/models/product_model.dart';
 import 'package:fishcash_pos/presentation/pos/bloc/pos_bloc.dart';
 import 'package:fishcash_pos/presentation/products/bloc/product_bloc.dart';
 import 'package:fishcash_pos/presentation/products/bloc/product_event_state.dart';
+import 'package:fishcash_pos/presentation/shared/widgets/store_logo.dart';
 
 class PosPage extends StatelessWidget {
   const PosPage({super.key});
@@ -254,10 +255,9 @@ class _PosProductCard extends StatelessWidget {
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  Icons.set_meal,
-                  size: 32,
-                  color: OceanTheme.oceanPrimary.withValues(alpha: 0.8),
+                child: const StoreLogo(
+                  width: 144,
+                  fit: BoxFit.contain,
                 ),
               ),
               const SizedBox(height: 8),

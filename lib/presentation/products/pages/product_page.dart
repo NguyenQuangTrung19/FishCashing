@@ -13,6 +13,7 @@ import 'package:fishcash_pos/core/utils/currency_input_formatter.dart';
 import 'package:fishcash_pos/core/utils/validators.dart';
 import 'package:fishcash_pos/core/theme/ocean_theme.dart';
 import 'package:fishcash_pos/core/utils/formatters.dart';
+import 'package:fishcash_pos/presentation/shared/widgets/store_logo.dart';
 import 'package:fishcash_pos/domain/models/product_model.dart';
 import 'package:fishcash_pos/presentation/categories/bloc/category_bloc.dart';
 import 'package:fishcash_pos/presentation/products/bloc/product_bloc.dart';
@@ -363,13 +364,10 @@ class _ProductCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Center(
-                    child: Icon(
-                      Icons.set_meal,
-                      size: 36,
-                      color: product.isActive
-                          ? OceanTheme.oceanPrimary.withValues(alpha: 0.7)
-                          : colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                    ),
+                    child: StoreLogo(
+                    width: 156,
+                    fit: BoxFit.contain,
+                  ),
                   ),
                 ),
               ),

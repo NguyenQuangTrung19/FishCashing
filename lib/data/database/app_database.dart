@@ -18,6 +18,7 @@ import 'package:fishcash_pos/data/database/daos/product_dao.dart';
 import 'package:fishcash_pos/data/database/daos/partner_dao.dart';
 import 'package:fishcash_pos/data/database/daos/trade_order_dao.dart';
 import 'package:fishcash_pos/data/database/daos/trading_session_dao.dart';
+import 'package:fishcash_pos/data/database/daos/store_info_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -32,7 +33,7 @@ part 'app_database.g.dart';
     Transactions,
     StoreInfos,
   ],
-  daos: [CategoryDao, ProductDao, PartnerDao, TradeOrderDao, TradingSessionDao],
+  daos: [CategoryDao, ProductDao, PartnerDao, TradeOrderDao, TradingSessionDao, StoreInfoDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());

@@ -16,6 +16,8 @@ import 'package:fishcash_pos/core/services/invoice_service.dart';
 import 'package:fishcash_pos/core/utils/formatters.dart';
 import 'package:fishcash_pos/data/database/daos/trade_order_dao.dart';
 import 'package:fishcash_pos/data/repositories/trading_session_repository.dart';
+import 'package:fishcash_pos/data/repositories/store_info_repository.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 // === DATA CLASSES ===
 
@@ -66,11 +68,17 @@ Future<void> showSingleOrderInvoice({
   if (outputType == null || !context.mounted) return;
 
   try {
+    final storeRepo = context.read<StoreInfoRepository>();
     final fonts = await InvoiceFonts.load();
-    final pdf = InvoiceService.generateSingleOrderInvoice(
+    final storeInfo = await storeRepo.getStoreInfo();
+    final pdf = await InvoiceService.generateSingleOrderInvoice(
       fonts: fonts,
       order: order,
       orderIndex: orderIndex,
+      storeName: storeInfo?.name ?? 'FishCash POS',
+      storeAddress: storeInfo?.address ?? '',
+      storePhone: storeInfo?.phone ?? '',
+      storeLogoPath: storeInfo?.logoPath ?? '',
     );
     final bytes = await pdf.save();
     final fileName = InvoiceService.orderFileName(
@@ -103,13 +111,19 @@ Future<void> _generateSessionAndOutput({
   required _ExportChoice choice,
 }) async {
   try {
+    final storeRepo = context.read<StoreInfoRepository>();
     final fonts = await InvoiceFonts.load();
+    final storeInfo = await storeRepo.getStoreInfo();
 
-    final pdf = InvoiceService.generateSessionInvoice(
+    final pdf = await InvoiceService.generateSessionInvoice(
       fonts: fonts,
       session: session,
       orders: orders,
       filter: choice.filter,
+      storeName: storeInfo?.name ?? 'FishCash POS',
+      storeAddress: storeInfo?.address ?? '',
+      storePhone: storeInfo?.phone ?? '',
+      storeLogoPath: storeInfo?.logoPath ?? '',
     );
     final bytes = await pdf.save();
     final fileName = InvoiceService.sessionFileName(
@@ -151,7 +165,7 @@ Future<void> _exportIndividualOrders({
 
       for (var i = 0; i < selectedOrders.length; i++) {
         final order = selectedOrders[i];
-        final pdf = InvoiceService.generateSingleOrderInvoice(
+        final pdf = await InvoiceService.generateSingleOrderInvoice(
           fonts: fonts,
           order: order,
           orderIndex: i + 1,
@@ -200,7 +214,7 @@ Future<void> _exportIndividualOrders({
       for (var i = 0; i < selectedOrders.length; i++) {
         if (!context.mounted) return;
         final order = selectedOrders[i];
-        final pdf = InvoiceService.generateSingleOrderInvoice(
+        final pdf = await InvoiceService.generateSingleOrderInvoice(
           fonts: fonts,
           order: order,
           orderIndex: i + 1,

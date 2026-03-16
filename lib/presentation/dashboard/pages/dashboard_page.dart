@@ -18,6 +18,7 @@ import 'package:fishcash_pos/presentation/shared/animated_refresh_button.dart';
 
 import 'package:fishcash_pos/core/theme/ocean_theme.dart';
 import 'package:fishcash_pos/core/utils/formatters.dart';
+import 'package:fishcash_pos/presentation/shared/widgets/store_logo.dart';
 import 'package:fishcash_pos/data/database/daos/trade_order_dao.dart';
 import 'package:fishcash_pos/data/repositories/dashboard_repository.dart';
 import 'package:fishcash_pos/data/repositories/trade_order_repository.dart';
@@ -133,23 +134,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [OceanTheme.oceanPrimary, OceanTheme.oceanFoam],
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child:
-                  const Icon(Icons.set_meal, color: Colors.white, size: 20),
-            ),
-            const SizedBox(width: 10),
-            const Text('FishCash'),
-          ],
-        ),
+         title: const Text('FishCash'),
         actions: [
           AnimatedRefreshButton(onPressed: _loadData),
         ],
@@ -271,11 +256,17 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Xin chào! 🐟',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                  )),
+          Row(
+            children: [
+              const StoreLogo(width: 240),
+              const SizedBox(width: 4),
+              Text('Xin chào! 🐟',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      )),
+            ],
+          ),
           const SizedBox(height: 4),
           Text(
             'Quản lý cửa hàng hải sản thông minh',
