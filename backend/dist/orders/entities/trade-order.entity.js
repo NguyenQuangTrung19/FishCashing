@@ -33,7 +33,7 @@ __decorate([
     __metadata("design:type", String)
 ], TradeOrder.prototype, "orderType", void 0);
 __decorate([
-    (0, typeorm_1.Column)('integer', { default: 0 }),
+    (0, typeorm_1.Column)('bigint', { default: 0 }),
     __metadata("design:type", Number)
 ], TradeOrder.prototype, "subtotalInCents", void 0);
 __decorate([

@@ -30,7 +30,7 @@ __decorate([
     __metadata("design:type", String)
 ], Product.prototype, "name", void 0);
 __decorate([
-    (0, typeorm_1.Column)('integer'),
+    (0, typeorm_1.Column)('bigint'),
     __metadata("design:type", Number)
 ], Product.prototype, "priceInCents", void 0);
 __decorate([

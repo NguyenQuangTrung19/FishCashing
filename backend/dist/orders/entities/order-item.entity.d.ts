@@ -1,6 +1,5 @@
-export declare class OrderItem {
-    id: string;
-    userId: string;
+import { SyncableEntity } from '../../common/entities/syncable.entity';
+export declare class OrderItem extends SyncableEntity {
     orderId: string;
     productId: string;
     quantityInGrams: number;

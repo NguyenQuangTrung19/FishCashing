@@ -11,9 +11,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OrderItem = void 0;
 const typeorm_1 = require("typeorm");
-let OrderItem = class OrderItem {
-    id;
-    userId;
+const syncable_entity_1 = require("../../common/entities/syncable.entity");
+let OrderItem = class OrderItem extends syncable_entity_1.SyncableEntity {
     orderId;
     productId;
     quantityInGrams;
@@ -23,14 +22,6 @@ let OrderItem = class OrderItem {
 };
 exports.OrderItem = OrderItem;
 __decorate([
-    (0, typeorm_1.PrimaryColumn)('uuid'),
-    __metadata("design:type", String)
-], OrderItem.prototype, "id", void 0);
-__decorate([
-    (0, typeorm_1.Column)('uuid'),
-    __metadata("design:type", String)
-], OrderItem.prototype, "userId", void 0);
-__decorate([
     (0, typeorm_1.Column)('uuid'),
     __metadata("design:type", String)
 ], OrderItem.prototype, "orderId", void 0);
@@ -39,7 +30,7 @@ __decorate([
     __metadata("design:type", String)
 ], OrderItem.prototype, "productId", void 0);
 __decorate([
-    (0, typeorm_1.Column)('integer'),
+    (0, typeorm_1.Column)('bigint'),
     __metadata("design:type", Number)
 ], OrderItem.prototype, "quantityInGrams", void 0);
 __decorate([
@@ -47,11 +38,11 @@ __decorate([
     __metadata("design:type", String)
 ], OrderItem.prototype, "unit", void 0);
 __decorate([
-    (0, typeorm_1.Column)('integer'),
+    (0, typeorm_1.Column)('bigint'),
     __metadata("design:type", Number)
 ], OrderItem.prototype, "unitPriceInCents", void 0);
 __decorate([
-    (0, typeorm_1.Column)('integer'),
+    (0, typeorm_1.Column)('bigint'),
     __metadata("design:type", Number)
 ], OrderItem.prototype, "lineTotalInCents", void 0);
 exports.OrderItem = OrderItem = __decorate([
