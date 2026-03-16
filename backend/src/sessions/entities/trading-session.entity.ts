@@ -6,12 +6,12 @@ export class TradingSession extends SyncableEntity {
   @Column({ default: '' })
   note: string;
 
-  @Column('integer', { default: 0 })
+  @Column('bigint', { default: 0 })
   totalBuyInCents: number;
 
-  @Column('integer', { default: 0 })
+  @Column('bigint', { default: 0 })
   totalSellInCents: number;
 
-  @Column('integer', { default: 0 })
+  @Column('bigint', { default: 0 })
   profitInCents: number;
 }

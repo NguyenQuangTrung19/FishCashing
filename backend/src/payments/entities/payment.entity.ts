@@ -11,7 +11,7 @@ export class Payment {
   @Column('uuid')
   orderId: string;
 
-  @Column('integer')
+  @Column('bigint')
   amountInCents: number;
 
   @Column({ default: '' })

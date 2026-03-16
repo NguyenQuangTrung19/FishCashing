@@ -12,7 +12,7 @@ export class TradeOrder extends SyncableEntity {
   @Column()
   orderType: string; // 'buy', 'sell', 'pos'
 
-  @Column('integer', { default: 0 })
+  @Column('bigint', { default: 0 })
   subtotalInCents: number;
 
   @Column({ default: '' })

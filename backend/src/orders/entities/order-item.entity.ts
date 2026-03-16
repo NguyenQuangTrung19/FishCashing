@@ -1,28 +1,23 @@
-import { Entity, Column, PrimaryColumn } from 'typeorm';
+import { Entity, Column } from 'typeorm';
+import { SyncableEntity } from '../../common/entities/syncable.entity';
 
 @Entity('order_items')
-export class OrderItem {
-  @PrimaryColumn('uuid')
-  id: string;
-
-  @Column('uuid')
-  userId: string;
-
+export class OrderItem extends SyncableEntity {
   @Column('uuid')
   orderId: string;
 
   @Column('uuid')
   productId: string;
 
-  @Column('integer')
+  @Column('bigint')
   quantityInGrams: number;
 
   @Column()
   unit: string;
 
-  @Column('integer')
+  @Column('bigint')
   unitPriceInCents: number;
 
-  @Column('integer')
+  @Column('bigint')
   lineTotalInCents: number;
 }

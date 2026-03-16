@@ -14,7 +14,7 @@ export class Transaction {
   @Column()
   type: string; // 'income' or 'expense'
 
-  @Column('integer')
+  @Column('bigint')
   amountInCents: number;
 
   @Column({ default: '' })
