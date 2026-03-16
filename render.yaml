@@ -1,0 +1,49 @@
+# Render.com Blueprint — FishCash POS Backend
+# Docs: https://docs.render.com/blueprint-spec
+
+databases:
+  - name: fishcash-db
+    plan: free
+    databaseName: fishcash_pos
+    user: fishcash
+
+services:
+  - type: web
+    plan: free
+    name: fishcash-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm ci && npm run build
+    startCommand: node dist/main.js
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: DB_HOST
+        fromDatabase:
+          name: fishcash-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: fishcash-db
+          property: port
+      - key: DB_USERNAME
+        fromDatabase:
+          name: fishcash-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: fishcash-db
+          property: password
+      - key: DB_DATABASE
+        fromDatabase:
+          name: fishcash-db
+          property: database
