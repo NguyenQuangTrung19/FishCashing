@@ -18,9 +18,45 @@ import 'package:fishcash_pos/domain/models/product_model.dart';
 import 'package:fishcash_pos/presentation/categories/bloc/category_bloc.dart';
 import 'package:fishcash_pos/presentation/products/bloc/product_bloc.dart';
 import 'package:fishcash_pos/presentation/products/bloc/product_event_state.dart';
+import 'package:fishcash_pos/presentation/shared/widgets/search_filter_bar.dart';
 
-class ProductPage extends StatelessWidget {
+class ProductPage extends StatefulWidget {
   const ProductPage({super.key});
+
+  @override
+  State<ProductPage> createState() => _ProductPageState();
+}
+
+class _ProductPageState extends State<ProductPage> {
+  String _searchQuery = '';
+  String _categoryFilter = 'all'; // 'all' or categoryId
+  String _activeFilter = 'active'; // 'all', 'active', 'inactive'
+
+  List<ProductModel> _applyFilters(List<ProductModel> products) {
+    var filtered = products;
+
+    // Active filter
+    if (_activeFilter == 'active') {
+      filtered = filtered.where((p) => p.isActive).toList();
+    } else if (_activeFilter == 'inactive') {
+      filtered = filtered.where((p) => !p.isActive).toList();
+    }
+
+    // Category filter
+    if (_categoryFilter != 'all') {
+      filtered =
+          filtered.where((p) => p.categoryId == _categoryFilter).toList();
+    }
+
+    // Search filter
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered
+          .where((p) => p.name.toLowerCase().contains(_searchQuery))
+          .toList();
+    }
+
+    return filtered;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -105,36 +141,131 @@ class ProductPage extends StatelessWidget {
             );
           }
 
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              final crossAxisCount =
-                  constraints.maxWidth > 900 ? 5 : (constraints.maxWidth > 600 ? 4 : 3);
-              return GridView.builder(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  childAspectRatio: 0.85,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
+          // Build category filter options
+          final categoryState = context.watch<CategoryBloc>().state;
+          final categoryFilters = [
+            const FilterOption(
+                id: 'all', label: 'Tất cả', icon: Icons.apps),
+            ...categoryState.categories
+                .where((c) => c.isActive)
+                .map((c) => FilterOption(
+                      id: c.id,
+                      label: c.name,
+                      icon: Icons.category,
+                    )),
+          ];
+
+          final filtered = _applyFilters(state.products);
+
+          return Column(
+            children: [
+              // Search bar + category chips
+              SearchFilterBar(
+                hintText: 'Tìm sản phẩm...',
+                onSearchChanged: (q) => setState(() => _searchQuery = q),
+                filters: categoryFilters,
+                selectedFilterId: _categoryFilter,
+                onFilterChanged: (id) =>
+                    setState(() => _categoryFilter = id),
+              ),
+              // Active/inactive toggle
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    _StatusChip(
+                      label: 'Đang bán',
+                      count: state.products.where((p) => p.isActive).length,
+                      isSelected: _activeFilter == 'active',
+                      color: OceanTheme.sellGreen,
+                      onTap: () =>
+                          setState(() => _activeFilter = 'active'),
+                    ),
+                    const SizedBox(width: 6),
+                    _StatusChip(
+                      label: 'Đã ẩn',
+                      count:
+                          state.products.where((p) => !p.isActive).length,
+                      isSelected: _activeFilter == 'inactive',
+                      color: OceanTheme.warningAmber,
+                      onTap: () =>
+                          setState(() => _activeFilter = 'inactive'),
+                    ),
+                    const SizedBox(width: 6),
+                    _StatusChip(
+                      label: 'Tất cả',
+                      count: state.products.length,
+                      isSelected: _activeFilter == 'all',
+                      color: OceanTheme.oceanPrimary,
+                      onTap: () =>
+                          setState(() => _activeFilter = 'all'),
+                    ),
+                  ],
                 ),
-                itemCount: state.products.length,
-                itemBuilder: (context, index) {
-                  final product = state.products[index];
-                  return _ProductCard(
-                    product: product,
-                    onEdit: () => _showFormDialog(context, product: product),
-                    onToggle: () {
-                      context.read<ProductBloc>().add(
-                            ProductToggleRequested(
-                              id: product.id,
-                              isActive: !product.isActive,
+              ),
+              const SizedBox(height: 4),
+              // Grid
+              Expanded(
+                child: filtered.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.search_off,
+                                size: 64,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant
+                                    .withValues(alpha: 0.4)),
+                            const SizedBox(height: 12),
+                            Text('Không tìm thấy sản phẩm',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant)),
+                          ],
+                        ),
+                      )
+                    : LayoutBuilder(
+                        builder: (context, constraints) {
+                          final crossAxisCount = constraints.maxWidth > 900
+                              ? 5
+                              : (constraints.maxWidth > 600 ? 4 : 3);
+                          return GridView.builder(
+                            padding:
+                                const EdgeInsets.fromLTRB(12, 8, 12, 88),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: crossAxisCount,
+                              childAspectRatio: 0.85,
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 8,
                             ),
+                            itemCount: filtered.length,
+                            itemBuilder: (context, index) {
+                              final product = filtered[index];
+                              return _ProductCard(
+                                product: product,
+                                onEdit: () =>
+                                    _showFormDialog(context, product: product),
+                                onToggle: () {
+                                  context.read<ProductBloc>().add(
+                                        ProductToggleRequested(
+                                          id: product.id,
+                                          isActive: !product.isActive,
+                                        ),
+                                      );
+                                },
+                              );
+                            },
                           );
-                    },
-                  );
-                },
-              );
-            },
+                        },
+                      ),
+              ),
+            ],
           );
         },
       ),
@@ -429,6 +560,82 @@ class _ProductCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Status chip for active/inactive filter
+class _StatusChip extends StatelessWidget {
+  final String label;
+  final int count;
+  final bool isSelected;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _StatusChip({
+    required this.label,
+    required this.count,
+    required this.isSelected,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color:
+              isSelected ? color.withValues(alpha: 0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected
+                ? color
+                : Theme.of(context)
+                    .colorScheme
+                    .outline
+                    .withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                color: isSelected
+                    ? color
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? color.withValues(alpha: 0.2)
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: isSelected
+                      ? color
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

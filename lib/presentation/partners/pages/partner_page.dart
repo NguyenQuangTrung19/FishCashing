@@ -10,6 +10,7 @@ import 'package:fishcash_pos/core/theme/ocean_theme.dart';
 import 'package:fishcash_pos/core/utils/validators.dart';
 import 'package:fishcash_pos/domain/models/partner_model.dart';
 import 'package:fishcash_pos/presentation/partners/bloc/partner_bloc.dart';
+import 'package:fishcash_pos/presentation/shared/widgets/search_filter_bar.dart';
 
 class PartnerPage extends StatelessWidget {
   const PartnerPage({super.key});
@@ -221,7 +222,7 @@ class PartnerPage extends StatelessWidget {
 }
 
 /// Partner list widget (shared by supplier and buyer tabs)
-class _PartnerList extends StatelessWidget {
+class _PartnerList extends StatefulWidget {
   final List<PartnerModel> partners;
   final IconData emptyIcon;
   final String emptyMessage;
@@ -235,27 +236,75 @@ class _PartnerList extends StatelessWidget {
   });
 
   @override
+  State<_PartnerList> createState() => _PartnerListState();
+}
+
+class _PartnerListState extends State<_PartnerList> {
+  String _searchQuery = '';
+
+  List<PartnerModel> get _filtered {
+    if (_searchQuery.isEmpty) return widget.partners;
+    return widget.partners
+        .where((p) =>
+            p.name.toLowerCase().contains(_searchQuery) ||
+            p.phone.toLowerCase().contains(_searchQuery))
+        .toList();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (partners.isEmpty) {
+    return Column(
+      children: [
+        SearchFilterBar(
+          hintText: 'Tìm theo tên, SĐT...',
+          onSearchChanged: (q) => setState(() => _searchQuery = q),
+        ),
+        Expanded(
+          child: _buildList(context),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildList(BuildContext context) {
+    final partners = _filtered;
+
+    if (widget.partners.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(emptyIcon,
+            Icon(widget.emptyIcon,
                 size: 80,
                 color: Theme.of(context)
                     .colorScheme
                     .primary
                     .withValues(alpha: 0.3)),
             const SizedBox(height: 16),
-            Text(emptyMessage,
+            Text(widget.emptyMessage,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant)),
             const SizedBox(height: 8),
-            Text(emptyDescription,
+            Text(widget.emptyDescription,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant),
                 textAlign: TextAlign.center),
+          ],
+        ),
+      );
+    }
+
+    if (partners.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, size: 64,
+                color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4)),
+            const SizedBox(height: 12),
+            Text('Không tìm thấy đối tác',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
           ],
         ),
       );

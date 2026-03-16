@@ -17,6 +17,8 @@ import 'package:fishcash_pos/presentation/pos/bloc/pos_bloc.dart';
 import 'package:fishcash_pos/presentation/products/bloc/product_bloc.dart';
 import 'package:fishcash_pos/presentation/products/bloc/product_event_state.dart';
 import 'package:fishcash_pos/presentation/shared/widgets/store_logo.dart';
+import 'package:fishcash_pos/presentation/shared/widgets/search_filter_bar.dart';
+import 'package:fishcash_pos/presentation/categories/bloc/category_bloc.dart';
 
 class PosPage extends StatelessWidget {
   const PosPage({super.key});
@@ -172,52 +174,104 @@ class _UnitToggleButton extends StatelessWidget {
 }
 
 /// Product grid for selection
-class _ProductGrid extends StatelessWidget {
+class _ProductGrid extends StatefulWidget {
+  @override
+  State<_ProductGrid> createState() => _ProductGridState();
+}
+
+class _ProductGridState extends State<_ProductGrid> {
+  String _searchQuery = '';
+  String _categoryFilter = 'all';
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<ProductBloc, ProductState>(
       builder: (context, state) {
-        final activeProducts =
+        var activeProducts =
             state.products.where((p) => p.isActive).toList();
 
-        if (activeProducts.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.inventory_2_outlined,
-                    size: 64,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withValues(alpha: 0.3)),
-                const SizedBox(height: 16),
-                Text('Chưa có sản phẩm',
-                    style: Theme.of(context).textTheme.titleMedium),
-              ],
-            ),
-          );
+        // Apply category filter
+        if (_categoryFilter != 'all') {
+          activeProducts = activeProducts
+              .where((p) => p.categoryId == _categoryFilter)
+              .toList();
         }
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final crossAxisCount =
-                constraints.maxWidth > 600 ? 4 : (constraints.maxWidth > 400 ? 3 : 2);
+        // Apply search
+        if (_searchQuery.isNotEmpty) {
+          activeProducts = activeProducts
+              .where((p) => p.name.toLowerCase().contains(_searchQuery))
+              .toList();
+        }
 
-            return GridView.builder(
-              padding: const EdgeInsets.all(12),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                childAspectRatio: 0.85,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-              ),
-              itemCount: activeProducts.length,
-              itemBuilder: (context, index) {
-                return _PosProductCard(product: activeProducts[index]);
-              },
-            );
-          },
+        // Build category chips
+        final categoryState = context.watch<CategoryBloc>().state;
+        final categoryFilters = [
+          const FilterOption(id: 'all', label: 'Tất cả', icon: Icons.apps),
+          ...categoryState.categories
+              .where((c) => c.isActive)
+              .map((c) => FilterOption(
+                    id: c.id,
+                    label: c.name,
+                    icon: Icons.category,
+                  )),
+        ];
+
+        return Column(
+          children: [
+            SearchFilterBar(
+              hintText: 'Tìm sản phẩm...',
+              onSearchChanged: (q) => setState(() => _searchQuery = q),
+              filters: categoryFilters,
+              selectedFilterId: _categoryFilter,
+              onFilterChanged: (id) => setState(() => _categoryFilter = id),
+            ),
+            Expanded(
+              child: activeProducts.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.search_off,
+                              size: 64,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant
+                                  .withValues(alpha: 0.4)),
+                          const SizedBox(height: 12),
+                          Text(
+                            _searchQuery.isNotEmpty || _categoryFilter != 'all'
+                                ? 'Không tìm thấy sản phẩm'
+                                : 'Chưa có sản phẩm',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ],
+                      ),
+                    )
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        final crossAxisCount = constraints.maxWidth > 600
+                            ? 4
+                            : (constraints.maxWidth > 400 ? 3 : 2);
+                        return GridView.builder(
+                          padding: const EdgeInsets.all(12),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: crossAxisCount,
+                            childAspectRatio: 0.85,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                          ),
+                          itemCount: activeProducts.length,
+                          itemBuilder: (context, index) {
+                            return _PosProductCard(
+                                product: activeProducts[index]);
+                          },
+                        );
+                      },
+                    ),
+            ),
+          ],
         );
       },
     );

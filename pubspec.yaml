@@ -42,11 +42,17 @@ dependencies:
 
   # Charts
   fl_chart: ^0.70.2
+  http: ^1.6.0
+  shared_preferences: ^2.5.4
+  connectivity_plus: ^7.0.0
+  socket_io_client: ^3.1.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  bloc_test: ^10.0.0
+  mocktail: ^1.0.4
 
   # Code generation
   drift_dev: ^2.25.0

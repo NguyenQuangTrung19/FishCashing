@@ -10,6 +10,9 @@ mixin _$TradeOrderDaoMixin on DatabaseAccessor<AppDatabase> {
   $OrderItemsTable get orderItems => attachedDatabase.orderItems;
   $PartnersTable get partners => attachedDatabase.partners;
   $TradingSessionsTable get tradingSessions => attachedDatabase.tradingSessions;
+  $InventoryAdjustmentsTable get inventoryAdjustments =>
+      attachedDatabase.inventoryAdjustments;
+  $PaymentsTable get payments => attachedDatabase.payments;
   TradeOrderDaoManager get managers => TradeOrderDaoManager(this);
 }
 
@@ -31,4 +34,11 @@ class TradeOrderDaoManager {
         _db.attachedDatabase,
         _db.tradingSessions,
       );
+  $$InventoryAdjustmentsTableTableManager get inventoryAdjustments =>
+      $$InventoryAdjustmentsTableTableManager(
+        _db.attachedDatabase,
+        _db.inventoryAdjustments,
+      );
+  $$PaymentsTableTableManager get payments =>
+      $$PaymentsTableTableManager(_db.attachedDatabase, _db.payments);
 }

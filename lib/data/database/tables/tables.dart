@@ -123,3 +123,27 @@ class StoreInfos extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
+
+/// Inventory Adjustments table — Stock corrections (reset, disposal, personal use)
+class InventoryAdjustments extends Table {
+  TextColumn get id => text()();
+  TextColumn get productId => text().references(Products, #id)();
+  IntColumn get quantityInGrams => integer()(); // negative = removed from stock
+  TextColumn get reason => text().withDefault(const Constant(''))(); // e.g. 'Thanh lý', 'Hao hụt', 'Làm mới kho'
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Payments table — Partial/full payments against orders
+class Payments extends Table {
+  TextColumn get id => text()();
+  TextColumn get orderId => text().references(TradeOrders, #id)();
+  IntColumn get amountInCents => integer()(); // payment amount × 100
+  TextColumn get note => text().withDefault(const Constant(''))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}

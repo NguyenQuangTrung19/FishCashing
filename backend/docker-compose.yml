@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fishcash-db
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: fishcash
+      POSTGRES_PASSWORD: fishcash_secret
+      POSTGRES_DB: fishcash_pos
+    volumes:
+      - fishcash_pgdata:/var/lib/postgresql/data
+
+volumes:
+  fishcash_pgdata:

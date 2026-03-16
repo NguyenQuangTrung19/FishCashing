@@ -13,6 +13,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:fishcash_pos/core/theme/ocean_theme.dart';
+import 'package:fishcash_pos/core/theme/theme_notifier.dart';
 import 'package:fishcash_pos/presentation/settings/bloc/store_info_bloc.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -186,6 +187,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
                       // Images section
                       _buildImagesCard(colorScheme, textTheme),
+                      const SizedBox(height: 24),
+
+                      // Theme toggle section
+                      _buildThemeCard(colorScheme, textTheme),
                       const SizedBox(height: 32),
 
                       // Save button
@@ -419,6 +424,79 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThemeCard(ColorScheme colorScheme, TextTheme textTheme) {
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: OceanTheme.oceanPrimary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.palette_outlined,
+                      color: OceanTheme.oceanPrimary, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Giao diện',
+                  style: textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ValueListenableBuilder<ThemeMode>(
+              valueListenable: themeNotifier,
+              builder: (context, themeMode, _) {
+                return SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<ThemeMode>(
+                    segments: const [
+                      ButtonSegment(
+                        value: ThemeMode.system,
+                        label: Text('Hệ thống'),
+                        icon: Icon(Icons.settings_brightness),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.light,
+                        label: Text('Sáng'),
+                        icon: Icon(Icons.light_mode),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.dark,
+                        label: Text('Tối'),
+                        icon: Icon(Icons.dark_mode),
+                      ),
+                    ],
+                    selected: {themeMode},
+                    onSelectionChanged: (selected) {
+                      themeNotifier.setThemeMode(selected.first);
+                    },
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '💡 Chế độ "Hệ thống" sẽ tự động theo cài đặt Windows',
+              style: textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ],
         ),

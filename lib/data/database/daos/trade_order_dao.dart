@@ -33,7 +33,7 @@ class OrderItemWithProduct {
   });
 }
 
-@DriftAccessor(tables: [TradeOrders, OrderItems, Products, Partners, TradingSessions])
+@DriftAccessor(tables: [TradeOrders, OrderItems, Products, Partners, TradingSessions, InventoryAdjustments, Payments])
 class TradeOrderDao extends DatabaseAccessor<AppDatabase>
     with _$TradeOrderDaoMixin {
   TradeOrderDao(super.db);
@@ -228,6 +228,225 @@ class TradeOrderDao extends DatabaseAccessor<AppDatabase>
   Future<List<TradeOrder>> getAllOrders() async {
     return (select(tradeOrders)
           ..orderBy([(o) => OrderingTerm.desc(o.createdAt)]))
+        .get();
+  }
+
+  /// Get stock per product with optional date range filter.
+  /// Includes adjustments in the calculation.
+  Future<List<Map<String, dynamic>>> getStockByProduct({
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    final dateFilter = _buildDateFilter(from, to, 'o.created_at');
+    final adjDateFilter = _buildDateFilter(from, to, 'ia.created_at');
+
+    final result = await customSelect(
+      '''
+      SELECT
+        p.id AS product_id,
+        p.name AS product_name,
+        p.unit AS product_unit,
+        p.category_id AS category_id,
+        p.is_active AS is_active,
+        COALESCE(buy_sell.buy_grams, 0) AS buy_grams,
+        COALESCE(buy_sell.sell_grams, 0) AS sell_grams,
+        COALESCE(adj.adj_grams, 0) AS adj_grams
+      FROM products p
+      LEFT JOIN (
+        SELECT
+          oi.product_id,
+          SUM(CASE WHEN o.order_type = 'buy' THEN oi.quantity_in_grams ELSE 0 END) AS buy_grams,
+          SUM(CASE WHEN o.order_type IN ('sell', 'pos') THEN oi.quantity_in_grams ELSE 0 END) AS sell_grams
+        FROM order_items oi
+        JOIN trade_orders o ON o.id = oi.order_id
+        $dateFilter
+        GROUP BY oi.product_id
+      ) buy_sell ON buy_sell.product_id = p.id
+      LEFT JOIN (
+        SELECT
+          ia.product_id,
+          SUM(ia.quantity_in_grams) AS adj_grams
+        FROM inventory_adjustments ia
+        $adjDateFilter
+        GROUP BY ia.product_id
+      ) adj ON adj.product_id = p.id
+      ORDER BY p.name ASC
+      ''',
+      readsFrom: {products, orderItems, tradeOrders, inventoryAdjustments},
+    ).get();
+
+    return result
+        .map((row) => {
+              'productId': row.read<String>('product_id'),
+              'productName': row.read<String>('product_name'),
+              'productUnit': row.read<String>('product_unit'),
+              'categoryId': row.read<String>('category_id'),
+              'isActive': row.read<bool>('is_active'),
+              'buyGrams': row.read<int>('buy_grams'),
+              'sellGrams': row.read<int>('sell_grams'),
+              'adjGrams': row.read<int>('adj_grams'),
+            })
+        .toList();
+  }
+
+  String _buildDateFilter(DateTime? from, DateTime? to, String column) {
+    if (from != null && to != null) {
+      final fromMs = from.millisecondsSinceEpoch ~/ 1000;
+      final toMs = to.millisecondsSinceEpoch ~/ 1000;
+      return 'WHERE $column >= $fromMs AND $column <= $toMs';
+    }
+    return '';
+  }
+
+  /// Get stock balance per product within a specific session
+  Future<List<Map<String, dynamic>>> getSessionStockBalance(
+      String sessionId) async {
+    final result = await customSelect(
+      '''
+      SELECT
+        p.id AS product_id,
+        p.name AS product_name,
+        p.unit AS product_unit,
+        COALESCE(SUM(CASE WHEN o.order_type = 'buy' THEN oi.quantity_in_grams ELSE 0 END), 0) AS buy_grams,
+        COALESCE(SUM(CASE WHEN o.order_type = 'sell' THEN oi.quantity_in_grams ELSE 0 END), 0) AS sell_grams
+      FROM order_items oi
+      JOIN trade_orders o ON o.id = oi.order_id
+      JOIN products p ON p.id = oi.product_id
+      WHERE o.session_id = ?
+      GROUP BY p.id
+      ORDER BY p.name ASC
+      ''',
+      variables: [Variable.withString(sessionId)],
+      readsFrom: {products, orderItems, tradeOrders},
+    ).get();
+
+    return result
+        .map((row) => {
+              'productId': row.read<String>('product_id'),
+              'productName': row.read<String>('product_name'),
+              'productUnit': row.read<String>('product_unit'),
+              'buyGrams': row.read<int>('buy_grams'),
+              'sellGrams': row.read<int>('sell_grams'),
+            })
+        .toList();
+  }
+
+  /// Insert inventory adjustment (stock reset/disposal)
+  Future<void> insertAdjustment(InventoryAdjustmentsCompanion adj) async {
+    await into(inventoryAdjustments).insert(adj);
+  }
+
+  /// Get adjustments for a product
+  Future<List<InventoryAdjustment>> getAdjustmentsForProduct(
+      String productId) async {
+    return (select(inventoryAdjustments)
+          ..where((a) => a.productId.equals(productId))
+          ..orderBy([(a) => OrderingTerm.desc(a.createdAt)]))
+        .get();
+  }
+
+  // ===========================================
+  // DEBT / PAYMENTS
+  // ===========================================
+
+  /// Get debt summary per partner:
+  /// SUM(order subtotals) - SUM(payments) grouped by partnerId
+  Future<List<Map<String, dynamic>>> getDebtByPartner(String debtType) async {
+    // debtType: 'receivable' (sell orders, khách nợ mình)
+    //           'payable' (buy orders, mình nợ NCC)
+    final orderType = debtType == 'receivable' ? 'sell' : 'buy';
+
+    final result = await customSelect(
+      '''
+      SELECT
+        p.id AS partner_id,
+        p.name AS partner_name,
+        p.phone AS partner_phone,
+        p.type AS partner_type,
+        COALESCE(SUM(o.subtotal_in_cents), 0) AS total_order_cents,
+        COALESCE(pay.total_paid, 0) AS total_paid_cents
+      FROM trade_orders o
+      JOIN partners p ON p.id = o.partner_id
+      LEFT JOIN (
+        SELECT
+          py.order_id,
+          SUM(py.amount_in_cents) AS total_paid
+        FROM payments py
+        GROUP BY py.order_id
+      ) pay ON pay.order_id = o.id
+      WHERE o.order_type = ? AND o.partner_id IS NOT NULL
+      GROUP BY p.id
+      HAVING (COALESCE(SUM(o.subtotal_in_cents), 0) - COALESCE(SUM(pay.total_paid), 0)) != 0
+         OR COALESCE(SUM(o.subtotal_in_cents), 0) > 0
+      ORDER BY p.name ASC
+      ''',
+      variables: [Variable.withString(orderType)],
+      readsFrom: {tradeOrders, partners, payments},
+    ).get();
+
+    return result
+        .map((row) => {
+              'partnerId': row.read<String>('partner_id'),
+              'partnerName': row.read<String>('partner_name'),
+              'partnerPhone': row.read<String>('partner_phone'),
+              'partnerType': row.read<String>('partner_type'),
+              'totalOrderCents': row.read<int>('total_order_cents'),
+              'totalPaidCents': row.read<int>('total_paid_cents'),
+            })
+        .toList();
+  }
+
+  /// Get orders for a specific partner with payment info
+  Future<List<Map<String, dynamic>>> getPartnerOrdersWithPayments(
+      String partnerId) async {
+    final result = await customSelect(
+      '''
+      SELECT
+        o.id AS order_id,
+        o.order_type,
+        o.subtotal_in_cents,
+        o.note AS order_note,
+        o.created_at AS order_date,
+        o.session_id,
+        COALESCE(pay.total_paid, 0) AS total_paid_cents
+      FROM trade_orders o
+      LEFT JOIN (
+        SELECT
+          py.order_id,
+          SUM(py.amount_in_cents) AS total_paid
+        FROM payments py
+        GROUP BY py.order_id
+      ) pay ON pay.order_id = o.id
+      WHERE o.partner_id = ?
+      ORDER BY o.created_at DESC
+      ''',
+      variables: [Variable.withString(partnerId)],
+      readsFrom: {tradeOrders, payments},
+    ).get();
+
+    return result
+        .map((row) => {
+              'orderId': row.read<String>('order_id'),
+              'orderType': row.read<String>('order_type'),
+              'subtotalCents': row.read<int>('subtotal_in_cents'),
+              'orderNote': row.read<String>('order_note'),
+              'orderDate': row.read<DateTime>('order_date'),
+              'sessionId': row.readNullable<String>('session_id'),
+              'totalPaidCents': row.read<int>('total_paid_cents'),
+            })
+        .toList();
+  }
+
+  /// Insert a payment
+  Future<void> insertPayment(PaymentsCompanion payment) async {
+    await into(payments).insert(payment);
+  }
+
+  /// Get payments for an order
+  Future<List<Payment>> getPaymentsForOrder(String orderId) async {
+    return (select(payments)
+          ..where((p) => p.orderId.equals(orderId))
+          ..orderBy([(p) => OrderingTerm.desc(p.createdAt)]))
         .get();
   }
 }

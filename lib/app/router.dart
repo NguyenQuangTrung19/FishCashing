@@ -13,7 +13,10 @@ import 'package:fishcash_pos/presentation/products/pages/product_page.dart';
 import 'package:fishcash_pos/presentation/partners/pages/partner_page.dart';
 import 'package:fishcash_pos/presentation/trading/pages/trading_page.dart';
 import 'package:fishcash_pos/presentation/finance/pages/finance_page.dart';
+import 'package:fishcash_pos/presentation/inventory/pages/inventory_page.dart';
+import 'package:fishcash_pos/presentation/debt/pages/debt_page.dart';
 import 'package:fishcash_pos/presentation/settings/pages/settings_page.dart';
+import 'package:fishcash_pos/presentation/sync/pages/sync_settings_page.dart';
 
 /// Navigation destination definition
 class AppDestination {
@@ -69,10 +72,28 @@ const List<AppDestination> appDestinations = [
     path: '/finance',
   ),
   AppDestination(
+    label: 'Kho hàng',
+    icon: Icons.warehouse_outlined,
+    selectedIcon: Icons.warehouse,
+    path: '/inventory',
+  ),
+  AppDestination(
+    label: 'Công nợ',
+    icon: Icons.account_balance_outlined,
+    selectedIcon: Icons.account_balance,
+    path: '/debt',
+  ),
+  AppDestination(
     label: 'Cài đặt',
     icon: Icons.settings_outlined,
     selectedIcon: Icons.settings,
     path: '/settings',
+  ),
+  AppDestination(
+    label: 'Đồng bộ',
+    icon: Icons.cloud_sync_outlined,
+    selectedIcon: Icons.cloud_sync,
+    path: '/sync',
   ),
 ];
 
@@ -122,9 +143,27 @@ final GoRouter appRouter = GoRouter(
           ),
         ),
         GoRoute(
+          path: '/inventory',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: InventoryPage(),
+          ),
+        ),
+        GoRoute(
+          path: '/debt',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: DebtPage(),
+          ),
+        ),
+        GoRoute(
           path: '/settings',
           pageBuilder: (context, state) => const NoTransitionPage(
             child: SettingsPage(),
+          ),
+        ),
+        GoRoute(
+          path: '/sync',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: SyncSettingsPage(),
           ),
         ),
       ],

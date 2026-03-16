@@ -17,6 +17,8 @@ import 'package:fishcash_pos/presentation/trading/bloc/trading_bloc.dart';
 import 'package:fishcash_pos/presentation/trading/widgets/order_creation_view.dart';
 import 'package:fishcash_pos/presentation/trading/widgets/invoice_export_dialog.dart';
 import 'package:fishcash_pos/presentation/shared/animated_refresh_button.dart';
+import 'package:fishcash_pos/presentation/shared/widgets/search_filter_bar.dart';
+import 'package:fishcash_pos/data/repositories/inventory_repository.dart';
 import 'package:fishcash_pos/presentation/partners/bloc/partner_bloc.dart';
 import 'package:fishcash_pos/presentation/pos/bloc/pos_bloc.dart';
 
@@ -390,7 +392,7 @@ class _TradingPageState extends State<TradingPage> {
 // SESSION LIST PAGE
 // ============================================
 
-class _SessionListPage extends StatelessWidget {
+class _SessionListPage extends StatefulWidget {
   final TradingState state;
   final ValueChanged<String> onSelectSession;
 
@@ -398,6 +400,24 @@ class _SessionListPage extends StatelessWidget {
     required this.state,
     required this.onSelectSession,
   });
+
+  @override
+  State<_SessionListPage> createState() => _SessionListPageState();
+}
+
+class _SessionListPageState extends State<_SessionListPage> {
+  String _searchQuery = '';
+
+  List<TradingSessionModel> get _filtered {
+    if (_searchQuery.isEmpty) return widget.state.sessions;
+    return widget.state.sessions
+        .where((s) =>
+            s.note.toLowerCase().contains(_searchQuery) ||
+            AppFormatters.dateTime(s.createdAt)
+                .toLowerCase()
+                .contains(_searchQuery))
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -422,11 +442,11 @@ class _SessionListPage extends StatelessWidget {
   }
 
   Widget _buildBody(BuildContext context) {
-    if (state.status == TradingStatus.loading && state.sessions.isEmpty) {
+    if (widget.state.status == TradingStatus.loading && widget.state.sessions.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (state.sessions.isEmpty) {
+    if (widget.state.sessions.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -446,17 +466,43 @@ class _SessionListPage extends StatelessWidget {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
-      itemCount: state.sessions.length,
-      itemBuilder: (context, index) {
-        final session = state.sessions[index];
-        return _SessionCard(
-          session: session,
-          onTap: () => onSelectSession(session.id),
-          onDelete: () => _confirmDelete(context, session),
-        );
-      },
+    final sessions = _filtered;
+
+    return Column(
+      children: [
+        SearchFilterBar(
+          hintText: 'Tìm phiên giao dịch...',
+          onSearchChanged: (q) => setState(() => _searchQuery = q),
+        ),
+        Expanded(
+          child: sessions.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.search_off, size: 64,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4)),
+                      const SizedBox(height: 12),
+                      Text('Không tìm thấy phiên giao dịch',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
+                  itemCount: sessions.length,
+                  itemBuilder: (context, index) {
+                    final session = sessions[index];
+                    return _SessionCard(
+                      session: session,
+                      onTap: () => widget.onSelectSession(session.id),
+                      onDelete: () => _confirmDelete(context, session),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 
@@ -758,6 +804,7 @@ class _SessionDetailPage extends StatelessWidget {
       body: _SessionDetailContent(
         state: state,
         session: session,
+        sessionId: sessionId,
         onEditOrder: onEditOrder,
         onDeleteOrder: onDeleteOrder,
       ),
@@ -772,12 +819,14 @@ class _SessionDetailPage extends StatelessWidget {
 class _SessionDetailContent extends StatefulWidget {
   final TradingState state;
   final TradingSessionModel? session;
+  final String sessionId;
   final void Function(String orderId, String orderType, String? partnerId, String? partnerName) onEditOrder;
   final void Function(String orderId) onDeleteOrder;
 
   const _SessionDetailContent({
     required this.state,
     this.session,
+    required this.sessionId,
     required this.onEditOrder,
     required this.onDeleteOrder,
   });
@@ -841,6 +890,11 @@ class _SessionDetailContentState extends State<_SessionDetailContent> {
             Card(child: ListTile(leading: const Icon(Icons.note), title: Text(session.note))),
             const SizedBox(height: 16),
           ],
+
+          // Session stock balance
+          if (allOrders.isNotEmpty)
+            _SessionBalanceWidget(sessionId: widget.sessionId),
+          if (allOrders.isNotEmpty) const SizedBox(height: 16),
 
           // Filter chips + order count
           Row(
@@ -1189,3 +1243,146 @@ class _AnimatedRefreshButtonState extends State<_AnimatedRefreshButton>
     );
   }
 }
+
+/// Session stock balance widget — shows buy vs sell per product
+class _SessionBalanceWidget extends StatelessWidget {
+  final String sessionId;
+
+  const _SessionBalanceWidget({required this.sessionId});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final repo = context.read<InventoryRepository>();
+
+    return FutureBuilder<List<SessionBalanceItem>>(
+      future: repo.getSessionBalance(sessionId),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final items = snapshot.data!;
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: OceanTheme.oceanPrimary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.balance,
+                          color: OceanTheme.oceanPrimary, size: 18),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Cân đối sản lượng',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    children: [
+                      Expanded(flex: 3, child: Text('Sản phẩm',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                              color: colorScheme.onSurfaceVariant))),
+                      Expanded(flex: 2, child: Text('Mua',
+                          textAlign: TextAlign.right,
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                              color: OceanTheme.buyBlue))),
+                      Expanded(flex: 2, child: Text('Bán',
+                          textAlign: TextAlign.right,
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                              color: OceanTheme.sellGreen))),
+                      Expanded(flex: 2, child: Text('Còn lại',
+                          textAlign: TextAlign.right,
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                              color: colorScheme.onSurface))),
+                    ],
+                  ),
+                ),
+                const Divider(height: 16),
+
+                // Rows
+                ...items.map((item) {
+                  final isPositive = item.balance >= Decimal.zero;
+                  final balanceColor = item.balance > Decimal.zero
+                      ? OceanTheme.sellGreen
+                      : item.balance < Decimal.zero
+                          ? Colors.red
+                          : colorScheme.onSurfaceVariant;
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 4),
+                    child: Row(
+                      children: [
+                        // Status dot
+                        Container(
+                          width: 6, height: 6,
+                          decoration: BoxDecoration(
+                            color: balanceColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          flex: 3,
+                          child: Text(item.productName,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            '${AppFormatters.quantity(item.buyQuantity)} ${item.unit}',
+                            textAlign: TextAlign.right,
+                            style: TextStyle(fontSize: 12, color: OceanTheme.buyBlue),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            '${AppFormatters.quantity(item.sellQuantity)} ${item.unit}',
+                            textAlign: TextAlign.right,
+                            style: TextStyle(fontSize: 12, color: OceanTheme.sellGreen),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            '${isPositive ? '+' : ''}${AppFormatters.quantity(item.balance)} ${item.unit}',
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: balanceColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+

@@ -32,6 +32,8 @@ part 'app_database.g.dart';
     OrderItems,
     Transactions,
     StoreInfos,
+    InventoryAdjustments,
+    Payments,
   ],
   daos: [CategoryDao, ProductDao, PartnerDao, TradeOrderDao, TradingSessionDao, StoreInfoDao],
 )
@@ -42,7 +44,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -51,7 +53,12 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       },
       onUpgrade: (Migrator m, int from, int to) async {
-        // Future migrations go here
+        if (from < 2) {
+          await m.createTable(inventoryAdjustments);
+        }
+        if (from < 3) {
+          await m.createTable(payments);
+        }
       },
     );
   }

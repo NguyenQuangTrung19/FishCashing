@@ -17,6 +17,8 @@ import 'package:fishcash_pos/data/repositories/trading_session_repository.dart';
 import 'package:fishcash_pos/data/repositories/dashboard_repository.dart';
 import 'package:fishcash_pos/data/repositories/store_info_repository.dart';
 import 'package:fishcash_pos/data/repositories/finance_repository.dart';
+import 'package:fishcash_pos/data/repositories/inventory_repository.dart';
+import 'package:fishcash_pos/data/repositories/debt_repository.dart';
 import 'package:fishcash_pos/presentation/categories/bloc/category_bloc.dart';
 import 'package:fishcash_pos/presentation/categories/bloc/category_event_state.dart';
 import 'package:fishcash_pos/presentation/products/bloc/product_bloc.dart';
@@ -26,6 +28,12 @@ import 'package:fishcash_pos/presentation/pos/bloc/pos_bloc.dart';
 import 'package:fishcash_pos/presentation/trading/bloc/trading_bloc.dart';
 import 'package:fishcash_pos/presentation/settings/bloc/store_info_bloc.dart';
 import 'package:fishcash_pos/presentation/finance/bloc/finance_bloc.dart';
+import 'package:fishcash_pos/presentation/inventory/bloc/inventory_bloc.dart';
+import 'package:fishcash_pos/presentation/debt/bloc/debt_bloc.dart';
+import 'package:fishcash_pos/core/theme/theme_notifier.dart';
+import 'package:fishcash_pos/core/services/api_client.dart';
+import 'package:fishcash_pos/core/services/sync_service.dart';
+import 'package:fishcash_pos/presentation/sync/bloc/sync_bloc.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,6 +55,12 @@ void main() {
       DashboardRepository(database.tradingSessionDao);
   final storeInfoRepository = StoreInfoRepository(database.storeInfoDao);
   final financeRepository = FinanceRepository(database.tradeOrderDao);
+  final inventoryRepository = InventoryRepository(database.tradeOrderDao);
+  final debtRepository = DebtRepository(database.tradeOrderDao);
+
+  // Initialize sync services
+  final apiClient = ApiClient();
+  final syncService = SyncService(api: apiClient, db: database);
 
   runApp(
     MultiRepositoryProvider(
@@ -57,6 +71,8 @@ void main() {
         RepositoryProvider.value(value: dashboardRepository),
         RepositoryProvider.value(value: storeInfoRepository),
         RepositoryProvider.value(value: financeRepository),
+        RepositoryProvider.value(value: inventoryRepository),
+        RepositoryProvider.value(value: debtRepository),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -88,8 +104,20 @@ void main() {
             create: (_) => FinanceBloc(financeRepository)
               ..add(const FinanceLoadRequested()),
           ),
+          BlocProvider<InventoryBloc>(
+            create: (_) => InventoryBloc(inventoryRepository)
+              ..add(const InventoryLoadRequested()),
+          ),
+          BlocProvider<DebtBloc>(
+            create: (_) => DebtBloc(debtRepository)
+              ..add(const DebtLoadRequested()),
+          ),
+          BlocProvider<SyncBloc>(
+            create: (_) => SyncBloc(api: apiClient, syncService: syncService)
+              ..add(const SyncInitRequested()),
+          ),
         ],
-        child: const FishCashApp(),
+        child: FishCashApp(themeNotifier: themeNotifier),
       ),
     ),
   );
