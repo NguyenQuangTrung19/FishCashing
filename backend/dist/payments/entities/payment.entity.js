@@ -33,7 +33,7 @@ __decorate([
     __metadata("design:type", String)
 ], Payment.prototype, "orderId", void 0);
 __decorate([
-    (0, typeorm_1.Column)('bigint'),
+    (0, typeorm_1.Column)('bigint', { default: 0 }),
     __metadata("design:type", Number)
 ], Payment.prototype, "amountInCents", void 0);
 __decorate([

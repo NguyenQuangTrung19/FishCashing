@@ -33,7 +33,7 @@ __decorate([
     __metadata("design:type", String)
 ], InventoryAdjustment.prototype, "productId", void 0);
 __decorate([
-    (0, typeorm_1.Column)('bigint'),
+    (0, typeorm_1.Column)('bigint', { default: 0 }),
     __metadata("design:type", Number)
 ], InventoryAdjustment.prototype, "quantityInGrams", void 0);
 __decorate([

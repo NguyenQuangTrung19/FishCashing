@@ -30,7 +30,7 @@ __decorate([
     __metadata("design:type", String)
 ], OrderItem.prototype, "productId", void 0);
 __decorate([
-    (0, typeorm_1.Column)('bigint'),
+    (0, typeorm_1.Column)('bigint', { default: 0 }),
     __metadata("design:type", Number)
 ], OrderItem.prototype, "quantityInGrams", void 0);
 __decorate([
@@ -38,11 +38,11 @@ __decorate([
     __metadata("design:type", String)
 ], OrderItem.prototype, "unit", void 0);
 __decorate([
-    (0, typeorm_1.Column)('bigint'),
+    (0, typeorm_1.Column)('bigint', { default: 0 }),
     __metadata("design:type", Number)
 ], OrderItem.prototype, "unitPriceInCents", void 0);
 __decorate([
-    (0, typeorm_1.Column)('bigint'),
+    (0, typeorm_1.Column)('bigint', { default: 0 }),
     __metadata("design:type", Number)
 ], OrderItem.prototype, "lineTotalInCents", void 0);
 exports.OrderItem = OrderItem = __decorate([
