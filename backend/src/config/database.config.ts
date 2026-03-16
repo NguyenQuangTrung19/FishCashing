@@ -11,6 +11,10 @@ export const getDatabaseConfig = (
   password: configService.get<string>('DB_PASSWORD', 'fishcash_secret'),
   database: configService.get<string>('DB_DATABASE', 'fishcash_pos'),
   autoLoadEntities: true,
-  synchronize: configService.get<string>('NODE_ENV') === 'development',
+  // DB_SYNCHRONIZE=true to auto-create tables (use for initial setup only!)
+  synchronize:
+    configService.get<string>('DB_SYNCHRONIZE', 
+      configService.get<string>('NODE_ENV') === 'development' ? 'true' : 'false'
+    ) === 'true',
   logging: configService.get<string>('NODE_ENV') === 'development',
 });
