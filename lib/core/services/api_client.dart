@@ -1,6 +1,8 @@
 /// HTTP API client for FishCash backend.
 ///
 /// Handles base URL, JWT token, and JSON (de)serialization.
+library;
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,7 +13,7 @@ class ApiClient {
   static const String _lastSyncKey = 'fishcash_last_sync';
   static const String _userKey = 'fishcash_user';
 
-  late final SharedPreferences _prefs;
+  SharedPreferences? _prefs;
   bool _initialized = false;
 
   // Singleton
@@ -25,38 +27,43 @@ class ApiClient {
     _initialized = true;
   }
 
+  SharedPreferences get _p {
+    assert(_initialized, 'ApiClient.init() must be called first');
+    return _prefs!;
+  }
+
   // --- Server URL ---
   String get serverUrl =>
-      _prefs.getString(_serverUrlKey) ?? 'http://localhost:3000';
+      _p.getString(_serverUrlKey) ?? 'http://localhost:3000';
   Future<void> setServerUrl(String url) =>
-      _prefs.setString(_serverUrlKey, url);
+      _p.setString(_serverUrlKey, url);
 
   // --- JWT Token ---
-  String? get token => _prefs.getString(_tokenKey);
+  String? get token => _p.getString(_tokenKey);
   bool get isLoggedIn => token != null;
   Future<void> setToken(String token) =>
-      _prefs.setString(_tokenKey, token);
-  Future<void> clearToken() => _prefs.remove(_tokenKey);
+      _p.setString(_tokenKey, token);
+  Future<void> clearToken() => _p.remove(_tokenKey);
 
   // --- User ---
   Map<String, dynamic>? get user {
-    final raw = _prefs.getString(_userKey);
+    final raw = _p.getString(_userKey);
     if (raw == null) return null;
     return jsonDecode(raw) as Map<String, dynamic>;
   }
   Future<void> setUser(Map<String, dynamic> user) =>
-      _prefs.setString(_userKey, jsonEncode(user));
-  Future<void> clearUser() => _prefs.remove(_userKey);
+      _p.setString(_userKey, jsonEncode(user));
+  Future<void> clearUser() => _p.remove(_userKey);
 
   // --- Last Sync ---
-  String? get lastSyncAt => _prefs.getString(_lastSyncKey);
+  String? get lastSyncAt => _p.getString(_lastSyncKey);
   Future<void> setLastSyncAt(String ts) =>
-      _prefs.setString(_lastSyncKey, ts);
+      _p.setString(_lastSyncKey, ts);
 
   // --- HTTP helpers ---
   Map<String, String> get _headers => {
         'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
+        if (token case final t?) 'Authorization': 'Bearer $t',
       };
 
   Future<Map<String, dynamic>> get(String path) async {
@@ -137,7 +144,7 @@ class ApiClient {
   Future<void> logout() async {
     await clearToken();
     await clearUser();
-    await _prefs.remove(_lastSyncKey);
+    await _p.remove(_lastSyncKey);
   }
 }
 

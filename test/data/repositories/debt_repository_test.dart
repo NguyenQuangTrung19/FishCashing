@@ -8,7 +8,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:fishcash_pos/data/database/daos/trade_order_dao.dart';
 import 'package:fishcash_pos/data/repositories/debt_repository.dart';
 import 'package:fishcash_pos/data/database/app_database.dart';
-import 'package:drift/drift.dart';
 
 class MockTradeOrderDao extends Mock implements TradeOrderDao {}
 

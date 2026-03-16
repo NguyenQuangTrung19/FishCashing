@@ -12,26 +12,44 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.HealthController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
+const typeorm_1 = require("typeorm");
+const throttler_1 = require("@nestjs/throttler");
 let HealthController = class HealthController {
-    check() {
+    dataSource;
+    constructor(dataSource) {
+        this.dataSource = dataSource;
+    }
+    async check() {
+        let dbStatus = 'disconnected';
+        try {
+            await this.dataSource.query('SELECT 1');
+            dbStatus = 'connected';
+        }
+        catch {
+            dbStatus = 'error';
+        }
         return {
-            status: 'ok',
+            status: dbStatus === 'connected' ? 'ok' : 'degraded',
             timestamp: new Date().toISOString(),
             service: 'fishcash-api',
             version: '1.0.0',
+            database: dbStatus,
+            uptime: Math.floor(process.uptime()),
         };
     }
 };
 exports.HealthController = HealthController;
 __decorate([
     (0, common_1.Get)('health'),
+    (0, throttler_1.SkipThrottle)(),
     (0, swagger_1.ApiOperation)({ summary: 'Health check endpoint' }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], HealthController.prototype, "check", null);
 exports.HealthController = HealthController = __decorate([
     (0, swagger_1.ApiTags)('health'),
-    (0, common_1.Controller)('api/v1')
+    (0, common_1.Controller)('api/v1'),
+    __metadata("design:paramtypes", [typeorm_1.DataSource])
 ], HealthController);
 //# sourceMappingURL=health.controller.js.map

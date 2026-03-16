@@ -8,7 +8,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:fishcash_pos/data/database/daos/trade_order_dao.dart';
 import 'package:fishcash_pos/data/repositories/inventory_repository.dart';
-import 'package:fishcash_pos/data/database/app_database.dart';
 
 class MockTradeOrderDao extends Mock implements TradeOrderDao {}
 

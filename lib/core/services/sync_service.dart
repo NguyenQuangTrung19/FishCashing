@@ -1,6 +1,8 @@
 /// Sync service — pushes local changes to server and pulls remote changes.
 ///
 /// Uses timestamp-based sync with last-write-wins conflict resolution.
+library;
+
 import 'dart:developer';
 
 import 'package:drift/drift.dart';

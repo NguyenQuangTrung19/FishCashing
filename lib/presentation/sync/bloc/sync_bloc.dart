@@ -1,4 +1,6 @@
 /// SyncBloc — manages sync state (login, sync, connectivity).
+library;
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fishcash_pos/core/services/api_client.dart';

@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 import { getDatabaseConfig } from './config/database.config';
 import { AuthModule } from './auth/auth.module';
@@ -21,7 +23,20 @@ import { HealthController } from './health.controller';
     // Global config from .env
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath:
+        process.env.NODE_ENV === 'production'
+          ? '.env.production'
+          : '.env',
+    }),
+
+    // Rate limiting: 60 requests per 60 seconds per IP
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000,
+          limit: 60,
+        },
+      ],
     }),
 
     // TypeORM PostgreSQL connection
@@ -45,5 +60,12 @@ import { HealthController } from './health.controller';
     SyncModule,
   ],
   controllers: [HealthController],
+  providers: [
+    // Apply rate limiting globally to all endpoints
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}
