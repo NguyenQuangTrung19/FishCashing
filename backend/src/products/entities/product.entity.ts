@@ -9,7 +9,7 @@ export class Product extends SyncableEntity {
   @Column({ length: 150 })
   name: string;
 
-  @Column('bigint')
+  @Column('bigint', { default: 0 })
   priceInCents: number;
 
   @Column({ default: 'kg' })

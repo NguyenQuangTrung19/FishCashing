@@ -11,7 +11,7 @@ export class InventoryAdjustment {
   @Column('uuid')
   productId: string;
 
-  @Column('bigint')
+  @Column('bigint', { default: 0 })
   quantityInGrams: number;
 
   @Column({ default: '' })

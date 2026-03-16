@@ -9,15 +9,15 @@ export class OrderItem extends SyncableEntity {
   @Column('uuid')
   productId: string;
 
-  @Column('bigint')
+  @Column('bigint', { default: 0 })
   quantityInGrams: number;
 
   @Column()
   unit: string;
 
-  @Column('bigint')
+  @Column('bigint', { default: 0 })
   unitPriceInCents: number;
 
-  @Column('bigint')
+  @Column('bigint', { default: 0 })
   lineTotalInCents: number;
 }
