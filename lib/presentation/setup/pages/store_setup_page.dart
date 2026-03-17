@@ -1,11 +1,6 @@
-/// Store Setup Page — first-time setup for new users.
-///
-/// No email/password needed. User enters store name + optional info,
-/// and the app auto-provisions on the server.
-library;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:fishcash_pos/core/theme/ocean_theme.dart';
 import 'package:fishcash_pos/presentation/sync/bloc/sync_bloc.dart';
 
@@ -50,7 +45,11 @@ class _StoreSetupPageState extends State<StoreSetupPage> {
 
     return BlocListener<ConnectionBloc, ServerConnectionState>(
       listener: (context, state) {
-        if (state.status == ConnectionStatus.error && state.error != null) {
+        if (state.status == ConnectionStatus.connected) {
+          // Setup done → go to Dashboard
+          context.go('/');
+        } else if (state.status == ConnectionStatus.error &&
+            state.error != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.error!),

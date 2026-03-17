@@ -1,9 +1,11 @@
 /// GoRouter configuration for FishCash POS.
 ///
 /// Defines all routes with a ShellRoute for persistent navigation.
+/// Auto-redirects to /setup on first launch (no API key).
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:fishcash_pos/presentation/shared/app_shell.dart';
@@ -17,6 +19,8 @@ import 'package:fishcash_pos/presentation/inventory/pages/inventory_page.dart';
 import 'package:fishcash_pos/presentation/debt/pages/debt_page.dart';
 import 'package:fishcash_pos/presentation/settings/pages/settings_page.dart';
 import 'package:fishcash_pos/presentation/sync/pages/sync_settings_page.dart';
+import 'package:fishcash_pos/presentation/setup/pages/store_setup_page.dart';
+import 'package:fishcash_pos/presentation/sync/bloc/sync_bloc.dart';
 
 /// Navigation destination definition
 class AppDestination {
@@ -99,7 +103,29 @@ const List<AppDestination> appDestinations = [
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
+  redirect: (context, state) {
+    final connectionState = context.read<ConnectionBloc>().state;
+    final isSetup = connectionState.status == ConnectionStatus.connected;
+    final isOnSetupPage = state.matchedLocation == '/setup';
+
+    // Not setup yet → force to setup page
+    if (!isSetup && !isOnSetupPage) return '/setup';
+
+    // Already setup but on setup page → go to dashboard
+    if (isSetup && isOnSetupPage) return '/';
+
+    return null; // no redirect
+  },
   routes: [
+    // Setup page — no sidebar, full screen
+    GoRoute(
+      path: '/setup',
+      pageBuilder: (context, state) => const NoTransitionPage(
+        child: StoreSetupPage(),
+      ),
+    ),
+
+    // Main app — with sidebar
     ShellRoute(
       builder: (context, state, child) => AppShell(child: child),
       routes: [
