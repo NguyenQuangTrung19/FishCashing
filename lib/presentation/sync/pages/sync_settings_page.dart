@@ -1,9 +1,11 @@
-/// Sync Settings Page — Login, server config, and sync status.
+/// Connection Settings Page — server info and connectivity status.
+///
+/// Replaces the old SyncSettingsPage. Shows connection status,
+/// server URL config, and store info. No login/register form.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import 'package:fishcash_pos/core/theme/ocean_theme.dart';
 import 'package:fishcash_pos/presentation/sync/bloc/sync_bloc.dart';
 
@@ -16,31 +18,24 @@ class SyncSettingsPage extends StatefulWidget {
 
 class _SyncSettingsPageState extends State<SyncSettingsPage> {
   final _serverUrlController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _nameController = TextEditingController();
-  bool _isRegistering = false;
 
   @override
   void initState() {
     super.initState();
-    context.read<SyncBloc>().add(const SyncInitRequested());
+    context.read<ConnectionBloc>().add(const ConnectionInitRequested());
   }
 
   @override
   void dispose() {
     _serverUrlController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _nameController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<SyncBloc, SyncState>(
+    return BlocConsumer<ConnectionBloc, ServerConnectionState>(
       listener: (context, state) {
-        if (state.status == SyncStatus.error && state.error != null) {
+        if (state.status == ConnectionStatus.error && state.error != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.error!),
@@ -48,14 +43,13 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
             ),
           );
         }
-        if (state.serverUrl != null &&
-            _serverUrlController.text.isEmpty) {
+        if (state.serverUrl != null && _serverUrlController.text.isEmpty) {
           _serverUrlController.text = state.serverUrl!;
         }
       },
       builder: (context, state) {
         return Scaffold(
-          appBar: AppBar(title: const Text('Đồng bộ & Sao lưu')),
+          appBar: AppBar(title: const Text('Kết nối & Sao lưu')),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -69,12 +63,13 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                 _buildServerUrlCard(state),
                 const SizedBox(height: 16),
 
-                // --- Auth or Sync sections ---
-                if (state.status == SyncStatus.loggedIn ||
-                    state.status == SyncStatus.syncing)
-                  _buildSyncSection(state)
-                else
-                  _buildAuthSection(state),
+                // --- Store Info ---
+                if (state.isSetup) _buildStoreInfoCard(state),
+
+                if (state.isSetup) ...[
+                  const SizedBox(height: 16),
+                  _buildDangerZone(),
+                ],
               ],
             ),
           ),
@@ -83,36 +78,36 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
     );
   }
 
-  Widget _buildStatusCard(SyncState state) {
+  Widget _buildStatusCard(ServerConnectionState state) {
     IconData icon;
     Color color;
     String text;
 
     switch (state.status) {
-      case SyncStatus.loggedIn:
+      case ConnectionStatus.connected:
         icon = Icons.cloud_done;
         color = OceanTheme.oceanPrimary;
-        text = 'Đã kết nối — ${state.userName ?? state.email}';
+        text = 'Đã kết nối — ${state.storeName ?? 'Cửa hàng'}';
         break;
-      case SyncStatus.syncing:
-        icon = Icons.sync;
-        color = Colors.amber;
-        text = 'Đang đồng bộ...';
-        break;
-      case SyncStatus.loading:
+      case ConnectionStatus.loading:
         icon = Icons.hourglass_top;
         color = Colors.grey;
         text = 'Đang xử lý...';
         break;
-      case SyncStatus.error:
+      case ConnectionStatus.error:
         icon = Icons.cloud_off;
         color = Colors.red;
         text = state.error ?? 'Lỗi kết nối';
         break;
+      case ConnectionStatus.needsSetup:
+        icon = Icons.cloud_off_outlined;
+        color = Colors.grey;
+        text = 'Chưa thiết lập cửa hàng';
+        break;
       default:
         icon = Icons.cloud_off_outlined;
         color = Colors.grey;
-        text = 'Chưa đăng nhập';
+        text = 'Đang khởi tạo...';
     }
 
     return Card(
@@ -126,9 +121,9 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
           child: Icon(icon, color: color, size: 28),
         ),
         title: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: state.lastSyncAt != null
+        subtitle: state.storeId != null
             ? Text(
-                'Lần sync cuối: ${_formatDate(state.lastSyncAt!)}',
+                'Store ID: ${state.storeId!.substring(0, 8)}...',
                 style: TextStyle(
                     fontSize: 12, color: Theme.of(context).colorScheme.outline),
               )
@@ -137,7 +132,7 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
     );
   }
 
-  Widget _buildServerUrlCard(SyncState state) {
+  Widget _buildServerUrlCard(ServerConnectionState state) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -158,8 +153,8 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.save_rounded),
                   onPressed: () {
-                    context.read<SyncBloc>().add(
-                        SyncServerUrlChanged(_serverUrlController.text.trim()));
+                    context.read<ConnectionBloc>().add(
+                        ServerUrlChanged(_serverUrlController.text.trim()));
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Đã lưu địa chỉ server')),
                     );
@@ -174,195 +169,63 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
     );
   }
 
-  Widget _buildAuthSection(SyncState state) {
+  Widget _buildStoreInfoCard(ServerConnectionState state) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Toggle login/register
-            Row(
-              children: [
-                Expanded(
-                  child: SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment(
-                          value: false, label: Text('Đăng nhập')),
-                      ButtonSegment(
-                          value: true, label: Text('Đăng ký')),
-                    ],
-                    selected: {_isRegistering},
-                    onSelectionChanged: (s) =>
-                        setState(() => _isRegistering = s.first),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            if (_isRegistering) ...[
-              TextField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Họ tên',
-                  prefixIcon: Icon(Icons.person),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-
-            TextField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Mật khẩu',
-                prefixIcon: Icon(Icons.lock),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            FilledButton.icon(
-              onPressed: state.status == SyncStatus.loading
-                  ? null
-                  : () {
-                      if (_isRegistering) {
-                        context.read<SyncBloc>().add(SyncRegisterRequested(
-                              _emailController.text.trim(),
-                              _nameController.text.trim(),
-                              _passwordController.text,
-                            ));
-                      } else {
-                        context.read<SyncBloc>().add(SyncLoginRequested(
-                              _emailController.text.trim(),
-                              _passwordController.text,
-                            ));
-                      }
-                    },
-              icon: state.status == SyncStatus.loading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : Icon(_isRegistering
-                      ? Icons.person_add
-                      : Icons.login),
-              label: Text(_isRegistering ? 'Đăng ký' : 'Đăng nhập'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSyncSection(SyncState state) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Sync button
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('Đồng bộ dữ liệu',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
-                Text(
-                  'Đẩy dữ liệu local lên server và kéo dữ liệu mới từ các thiết bị khác về.',
-                  style: TextStyle(
-                      fontSize: 13,
-                      color: Theme.of(context).colorScheme.outline),
-                ),
-                const SizedBox(height: 16),
-                FilledButton.tonalIcon(
-                  onPressed: state.status == SyncStatus.syncing
-                      ? null
-                      : () => context
-                          .read<SyncBloc>()
-                          .add(const SyncNowRequested()),
-                  icon: state.status == SyncStatus.syncing
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.sync_rounded),
-                  label: Text(state.status == SyncStatus.syncing
-                      ? 'Đang đồng bộ...'
-                      : 'Đồng bộ ngay'),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // Account info
-        Card(
-          child: Column(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.account_circle),
-                title: Text(state.userName ?? 'User'),
-                subtitle: Text(state.email ?? ''),
-              ),
-              const Divider(height: 0),
-              ListTile(
-                leading: const Icon(Icons.logout, color: Colors.red),
-                title: const Text('Đăng xuất',
-                    style: TextStyle(color: Colors.red)),
-                onTap: () => _confirmLogout(),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _confirmLogout() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Đăng xuất'),
-        content: const Text(
-            'Đăng xuất sẽ ngắt kết nối sync. Dữ liệu local không bị mất.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Hủy')),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.read<SyncBloc>().add(const SyncLogoutRequested());
-            },
-            child: const Text('Đăng xuất'),
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.store_rounded),
+            title: Text(state.storeName ?? 'Cửa hàng'),
+            subtitle: Text('ID: ${state.storeId ?? 'N/A'}'),
           ),
         ],
       ),
     );
   }
 
-  String _formatDate(String iso) {
-    try {
-      final dt = DateTime.parse(iso).toLocal();
-      return DateFormat('HH:mm dd/MM/yyyy').format(dt);
-    } catch (_) {
-      return iso;
-    }
+  Widget _buildDangerZone() {
+    return Card(
+      color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
+      child: Column(
+        children: [
+          ListTile(
+            leading: Icon(Icons.warning_rounded,
+                color: Theme.of(context).colorScheme.error),
+            title: Text('Đặt lại ứng dụng',
+                style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            subtitle: const Text('Xóa thiết lập và bắt đầu lại'),
+            onTap: () => _confirmReset(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmReset() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Đặt lại ứng dụng?'),
+        content: const Text(
+            'Thao tác này sẽ xóa thiết lập kết nối. Dữ liệu trên server không bị mất.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Hủy')),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              context
+                  .read<ConnectionBloc>()
+                  .add(const ConnectionResetRequested());
+            },
+            child: const Text('Đặt lại'),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -1,11 +1,6 @@
 # Render.com Blueprint — FishCash POS Backend
+# Database hosted externally on Neon.tech (free tier, permanent)
 # Docs: https://docs.render.com/blueprint-spec
-
-databases:
-  - name: fishcash-db
-    plan: free
-    databaseName: fishcash_pos
-    user: fishcash
 
 services:
   - type: web
@@ -24,26 +19,8 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES_IN
-        value: 7d
+        value: 365d
       - key: CORS_ORIGIN
         value: "*"
-      - key: DB_HOST
-        fromDatabase:
-          name: fishcash-db
-          property: host
-      - key: DB_PORT
-        fromDatabase:
-          name: fishcash-db
-          property: port
-      - key: DB_USERNAME
-        fromDatabase:
-          name: fishcash-db
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: fishcash-db
-          property: password
-      - key: DB_DATABASE
-        fromDatabase:
-          name: fishcash-db
-          property: database
+      - key: DATABASE_URL
+        sync: false  # Set manually via Render dashboard (Neon.tech connection string)

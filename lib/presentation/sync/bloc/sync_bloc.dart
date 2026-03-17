@@ -1,211 +1,150 @@
-/// SyncBloc — manages sync state (login, sync, connectivity).
+/// ConnectionBloc — manages store setup + server connectivity.
+///
+/// Replaces the old SyncBloc. No login/register needed.
+/// User just enters store info → auto-provision on server.
 library;
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fishcash_pos/core/services/api_client.dart';
-import 'package:fishcash_pos/core/services/sync_service.dart';
 
 // --- Events ---
-abstract class SyncEvent extends Equatable {
-  const SyncEvent();
+abstract class ConnectionEvent extends Equatable {
+  const ConnectionEvent();
   @override
   List<Object?> get props => [];
 }
 
-class SyncInitRequested extends SyncEvent {
-  const SyncInitRequested();
+class ConnectionInitRequested extends ConnectionEvent {
+  const ConnectionInitRequested();
 }
 
-class SyncLoginRequested extends SyncEvent {
-  final String email;
-  final String password;
-  const SyncLoginRequested(this.email, this.password);
+class StoreSetupRequested extends ConnectionEvent {
+  final String storeName;
+  final String? phone;
+  final String? address;
+  const StoreSetupRequested(this.storeName, {this.phone, this.address});
   @override
-  List<Object?> get props => [email, password];
+  List<Object?> get props => [storeName, phone, address];
 }
 
-class SyncRegisterRequested extends SyncEvent {
-  final String email;
-  final String name;
-  final String password;
-  final String? storeName;
-  const SyncRegisterRequested(this.email, this.name, this.password,
-      [this.storeName]);
-  @override
-  List<Object?> get props => [email, name, password, storeName];
-}
-
-class SyncNowRequested extends SyncEvent {
-  const SyncNowRequested();
-}
-
-class SyncLogoutRequested extends SyncEvent {
-  const SyncLogoutRequested();
-}
-
-class SyncServerUrlChanged extends SyncEvent {
+class ServerUrlChanged extends ConnectionEvent {
   final String url;
-  const SyncServerUrlChanged(this.url);
+  const ServerUrlChanged(this.url);
   @override
   List<Object?> get props => [url];
 }
 
-// --- States ---
-enum SyncStatus { initial, loading, loggedOut, loggedIn, syncing, error }
+class ConnectionResetRequested extends ConnectionEvent {
+  const ConnectionResetRequested();
+}
 
-class SyncState extends Equatable {
-  final SyncStatus status;
-  final String? email;
-  final String? userName;
+// --- States ---
+enum ConnectionStatus { initial, loading, connected, needsSetup, error }
+
+class ServerConnectionState extends Equatable {
+  final ConnectionStatus status;
+  final String? storeName;
+  final String? storeId;
   final String? serverUrl;
-  final String? lastSyncAt;
   final String? error;
 
-  const SyncState({
-    this.status = SyncStatus.initial,
-    this.email,
-    this.userName,
+  const ServerConnectionState({
+    this.status = ConnectionStatus.initial,
+    this.storeName,
+    this.storeId,
     this.serverUrl,
-    this.lastSyncAt,
     this.error,
   });
 
-  SyncState copyWith({
-    SyncStatus? status,
-    String? email,
-    String? userName,
+  bool get isSetup => storeId != null;
+
+  ServerConnectionState copyWith({
+    ConnectionStatus? status,
+    String? storeName,
+    String? storeId,
     String? serverUrl,
-    String? lastSyncAt,
     String? error,
   }) {
-    return SyncState(
+    return ServerConnectionState(
       status: status ?? this.status,
-      email: email ?? this.email,
-      userName: userName ?? this.userName,
+      storeName: storeName ?? this.storeName,
+      storeId: storeId ?? this.storeId,
       serverUrl: serverUrl ?? this.serverUrl,
-      lastSyncAt: lastSyncAt ?? this.lastSyncAt,
       error: error,
     );
   }
 
   @override
-  List<Object?> get props =>
-      [status, email, userName, serverUrl, lastSyncAt, error];
+  List<Object?> get props => [status, storeName, storeId, serverUrl, error];
 }
 
 // --- Bloc ---
-class SyncBloc extends Bloc<SyncEvent, SyncState> {
+class ConnectionBloc extends Bloc<ConnectionEvent, ServerConnectionState> {
   final ApiClient _api;
-  final SyncService _syncService;
 
-  SyncBloc({required ApiClient api, required SyncService syncService})
+  ConnectionBloc({required ApiClient api})
       : _api = api,
-        _syncService = syncService,
-        super(const SyncState()) {
-    on<SyncInitRequested>(_onInit);
-    on<SyncLoginRequested>(_onLogin);
-    on<SyncRegisterRequested>(_onRegister);
-    on<SyncNowRequested>(_onSyncNow);
-    on<SyncLogoutRequested>(_onLogout);
-    on<SyncServerUrlChanged>(_onServerUrlChanged);
+        super(const ServerConnectionState()) {
+    on<ConnectionInitRequested>(_onInit);
+    on<StoreSetupRequested>(_onSetupStore);
+    on<ServerUrlChanged>(_onServerUrlChanged);
+    on<ConnectionResetRequested>(_onReset);
   }
 
   Future<void> _onInit(
-      SyncInitRequested event, Emitter<SyncState> emit) async {
+      ConnectionInitRequested event, Emitter<ServerConnectionState> emit) async {
     await _api.init();
-    final user = _api.user;
-    if (_api.isLoggedIn && user != null) {
-      emit(SyncState(
-        status: SyncStatus.loggedIn,
-        email: user['email'] as String?,
-        userName: user['name'] as String?,
+
+    if (_api.isSetup) {
+      emit(ServerConnectionState(
+        status: ConnectionStatus.connected,
+        storeName: _api.storeName,
+        storeId: _api.storeId,
         serverUrl: _api.serverUrl,
-        lastSyncAt: _api.lastSyncAt,
       ));
     } else {
-      emit(SyncState(
-        status: SyncStatus.loggedOut,
+      emit(ServerConnectionState(
+        status: ConnectionStatus.needsSetup,
         serverUrl: _api.serverUrl,
       ));
     }
   }
 
-  Future<void> _onLogin(
-      SyncLoginRequested event, Emitter<SyncState> emit) async {
-    emit(state.copyWith(status: SyncStatus.loading));
+  Future<void> _onSetupStore(
+      StoreSetupRequested event, Emitter<ServerConnectionState> emit) async {
+    emit(state.copyWith(status: ConnectionStatus.loading));
     try {
-      final result = await _api.login(
-          email: event.email, password: event.password);
-      final user = result['user'] as Map<String, dynamic>;
-      emit(state.copyWith(
-        status: SyncStatus.loggedIn,
-        email: user['email'] as String?,
-        userName: user['name'] as String?,
-      ));
-    } on ApiException catch (e) {
-      emit(state.copyWith(status: SyncStatus.error, error: e.message));
-    } catch (e) {
-      emit(state.copyWith(
-          status: SyncStatus.error,
-          error: 'Không thể kết nối server'));
-    }
-  }
-
-  Future<void> _onRegister(
-      SyncRegisterRequested event, Emitter<SyncState> emit) async {
-    emit(state.copyWith(status: SyncStatus.loading));
-    try {
-      final result = await _api.register(
-        email: event.email,
-        name: event.name,
-        password: event.password,
+      final result = await _api.setupStore(
         storeName: event.storeName,
+        phone: event.phone,
+        address: event.address,
       );
-      final user = result['user'] as Map<String, dynamic>;
-      emit(state.copyWith(
-        status: SyncStatus.loggedIn,
-        email: user['email'] as String?,
-        userName: user['name'] as String?,
+
+      emit(ServerConnectionState(
+        status: ConnectionStatus.connected,
+        storeName: result['storeName'] as String?,
+        storeId: result['storeId'] as String?,
+        serverUrl: _api.serverUrl,
       ));
     } on ApiException catch (e) {
-      emit(state.copyWith(status: SyncStatus.error, error: e.message));
+      emit(state.copyWith(status: ConnectionStatus.error, error: e.message));
     } catch (e) {
       emit(state.copyWith(
-          status: SyncStatus.error,
-          error: 'Không thể kết nối server'));
+          status: ConnectionStatus.error,
+          error: 'Không thể kết nối server. Kiểm tra kết nối mạng.'));
     }
-  }
-
-  Future<void> _onSyncNow(
-      SyncNowRequested event, Emitter<SyncState> emit) async {
-    emit(state.copyWith(status: SyncStatus.syncing));
-    try {
-      final result = await _syncService.fullSync();
-      if (result.success) {
-        emit(state.copyWith(
-          status: SyncStatus.loggedIn,
-          lastSyncAt: _api.lastSyncAt,
-        ));
-      } else {
-        emit(state.copyWith(
-            status: SyncStatus.error, error: result.error));
-      }
-    } catch (e) {
-      emit(state.copyWith(
-          status: SyncStatus.error, error: 'Lỗi đồng bộ: $e'));
-    }
-  }
-
-  Future<void> _onLogout(
-      SyncLogoutRequested event, Emitter<SyncState> emit) async {
-    await _api.logout();
-    emit(const SyncState(status: SyncStatus.loggedOut));
   }
 
   Future<void> _onServerUrlChanged(
-      SyncServerUrlChanged event, Emitter<SyncState> emit) async {
+      ServerUrlChanged event, Emitter<ServerConnectionState> emit) async {
     await _api.setServerUrl(event.url);
     emit(state.copyWith(serverUrl: event.url));
+  }
+
+  Future<void> _onReset(
+      ConnectionResetRequested event, Emitter<ServerConnectionState> emit) async {
+    await _api.resetAll();
+    emit(const ServerConnectionState(status: ConnectionStatus.needsSetup));
   }
 }

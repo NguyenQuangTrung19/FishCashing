@@ -11,13 +11,27 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, AuthResponseDto } from './dto/auth.dto';
+import {
+  RegisterDto,
+  LoginDto,
+  AuthResponseDto,
+  SetupStoreDto,
+  SetupResponseDto,
+} from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('auth')
 @Controller('api/v1/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  /// Quick store setup — no email/password needed.
+  /// User enters store info and gets an API key.
+  @Post('setup')
+  @ApiOperation({ summary: 'Quick store setup — no login needed' })
+  async setupStore(@Body() dto: SetupStoreDto): Promise<SetupResponseDto> {
+    return this.authService.setupStore(dto);
+  }
 
   @Post('register')
   @ApiOperation({ summary: 'Register a new user account' })
@@ -40,3 +54,4 @@ export class AuthController {
     return this.authService.getProfile(req.user.id);
   }
 }
+

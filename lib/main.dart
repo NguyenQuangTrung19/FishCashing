@@ -1,6 +1,6 @@
 /// Entry point for FishCash POS application.
 ///
-/// Sets up dependency injection (database, repositories, BLoCs)
+/// Sets up dependency injection (database, API client, repositories, BLoCs)
 /// and launches the app.
 library;
 
@@ -32,16 +32,18 @@ import 'package:fishcash_pos/presentation/inventory/bloc/inventory_bloc.dart';
 import 'package:fishcash_pos/presentation/debt/bloc/debt_bloc.dart';
 import 'package:fishcash_pos/core/theme/theme_notifier.dart';
 import 'package:fishcash_pos/core/services/api_client.dart';
-import 'package:fishcash_pos/core/services/sync_service.dart';
 import 'package:fishcash_pos/presentation/sync/bloc/sync_bloc.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize database
+  // Initialize database (local SQLite cache)
   final database = AppDatabase();
 
-  // Initialize repositories
+  // Initialize API client (online-first)
+  final apiClient = ApiClient();
+
+  // Initialize repositories (DAO for cache, ApiClient for server)
   final categoryRepository = CategoryRepository(database.categoryDao);
   final productRepository = ProductRepository(database.productDao);
   final partnerRepository = PartnerRepository(database.partnerDao);
@@ -58,10 +60,6 @@ void main() {
   final inventoryRepository = InventoryRepository(database.tradeOrderDao);
   final debtRepository = DebtRepository(database.tradeOrderDao);
 
-  // Initialize sync services
-  final apiClient = ApiClient();
-  final syncService = SyncService(api: apiClient, db: database);
-
   runApp(
     MultiRepositoryProvider(
       providers: [
@@ -73,6 +71,7 @@ void main() {
         RepositoryProvider.value(value: financeRepository),
         RepositoryProvider.value(value: inventoryRepository),
         RepositoryProvider.value(value: debtRepository),
+        RepositoryProvider.value(value: apiClient),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -112,9 +111,9 @@ void main() {
             create: (_) => DebtBloc(debtRepository)
               ..add(const DebtLoadRequested()),
           ),
-          BlocProvider<SyncBloc>(
-            create: (_) => SyncBloc(api: apiClient, syncService: syncService)
-              ..add(const SyncInitRequested()),
+          BlocProvider<ConnectionBloc>(
+            create: (_) => ConnectionBloc(api: apiClient)
+              ..add(const ConnectionInitRequested()),
           ),
         ],
         child: FishCashApp(themeNotifier: themeNotifier),

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -17,6 +17,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { StoreModule } from './store/store.module';
 import { SyncModule } from './sync/sync.module';
 import { HealthController } from './health.controller';
+import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 
 @Module({
   imports: [
@@ -68,4 +69,10 @@ import { HealthController } from './health.controller';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // Log all HTTP requests in production
+    consumer.apply(RequestLoggerMiddleware).forRoutes('*');
+  }
+}
+
