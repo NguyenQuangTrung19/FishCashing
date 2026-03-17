@@ -4,11 +4,14 @@
 /// Breakpoint: 600dp (standard Material 3 compact/medium boundary).
 library;
 
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:fishcash_pos/app/router.dart';
 import 'package:fishcash_pos/core/theme/ocean_theme.dart';
+import 'package:fishcash_pos/presentation/shared/update_dialog.dart';
 import 'package:fishcash_pos/presentation/shared/widgets/store_logo.dart';
 
 class AppShell extends StatelessWidget {
@@ -93,6 +96,13 @@ class _DesktopShellState extends State<_DesktopShell>
       parent: _animController,
       curve: Curves.easeInOutCubic,
     );
+
+    // Check for updates on desktop platforms
+    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        UpdateDialog.checkAndShow(context);
+      });
+    }
   }
 
   @override
