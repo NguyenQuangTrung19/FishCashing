@@ -36,10 +36,7 @@ export class SyncController {
 
   @Get('pull')
   @ApiOperation({ summary: 'Pull server changes since timestamp' })
-  async pull(
-    @Request() req: any,
-    @Query('since') since?: string,
-  ) {
+  async pull(@Request() req: any, @Query('since') since?: string) {
     return this.syncService.pull(req.user.id, since);
   }
 

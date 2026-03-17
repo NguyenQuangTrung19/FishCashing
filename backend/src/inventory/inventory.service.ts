@@ -12,7 +12,10 @@ export class InventoryService {
 
   async create(userId: string, data: any): Promise<InventoryAdjustment> {
     return this.repository.save(
-      this.repository.create({ ...data, userId } as DeepPartial<InventoryAdjustment>),
+      this.repository.create({
+        ...data,
+        userId,
+      } as DeepPartial<InventoryAdjustment>),
     );
   }
 

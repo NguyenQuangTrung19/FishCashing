@@ -7,5 +7,7 @@ import { Partner } from './entities/partner.entity';
 @ApiTags('partners')
 @Controller('api/v1/partners')
 export class PartnersController extends BaseCrudController<Partner> {
-  constructor(service: PartnersService) { super(service); }
+  constructor(service: PartnersService) {
+    super(service);
+  }
 }

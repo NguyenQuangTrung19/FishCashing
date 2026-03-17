@@ -25,9 +25,7 @@ import { RequestLoggerMiddleware } from './common/middleware/request-logger.midd
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath:
-        process.env.NODE_ENV === 'production'
-          ? '.env.production'
-          : '.env',
+        process.env.NODE_ENV === 'production' ? '.env.production' : '.env',
     }),
 
     // Rate limiting: 60 requests per 60 seconds per IP
@@ -75,4 +73,3 @@ export class AppModule implements NestModule {
     consumer.apply(RequestLoggerMiddleware).forRoutes('*');
   }
 }
-

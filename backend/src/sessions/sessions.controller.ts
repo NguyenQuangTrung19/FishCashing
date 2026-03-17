@@ -7,5 +7,7 @@ import { TradingSession } from './entities/trading-session.entity';
 @ApiTags('sessions')
 @Controller('api/v1/sessions')
 export class SessionsController extends BaseCrudController<TradingSession> {
-  constructor(service: SessionsService) { super(service); }
+  constructor(service: SessionsService) {
+    super(service);
+  }
 }

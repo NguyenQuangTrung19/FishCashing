@@ -6,7 +6,9 @@ import { TradingSession } from './entities/trading-session.entity';
 
 @Injectable()
 export class SessionsService extends BaseCrudService<TradingSession> {
-  constructor(@InjectRepository(TradingSession) repository: Repository<TradingSession>) {
+  constructor(
+    @InjectRepository(TradingSession) repository: Repository<TradingSession>,
+  ) {
     super(repository);
   }
 }

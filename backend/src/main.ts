@@ -58,4 +58,4 @@ async function bootstrap() {
   logger.log(`🐟 FishCash API running on http://localhost:${port}`);
   logger.log(`🌍 Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 }
-bootstrap();
+void bootstrap();

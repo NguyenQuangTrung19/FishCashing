@@ -54,4 +54,3 @@ export class AuthController {
     return this.authService.getProfile(req.user.id);
   }
 }
-

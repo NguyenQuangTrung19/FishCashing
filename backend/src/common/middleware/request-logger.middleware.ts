@@ -17,7 +17,9 @@ export class RequestLoggerMiddleware implements NestMiddleware {
 
       // Color-code by status
       if (statusCode >= 400) {
-        this.logger.warn(`${method} ${originalUrl} ${statusCode} ${duration}ms`);
+        this.logger.warn(
+          `${method} ${originalUrl} ${statusCode} ${duration}ms`,
+        );
       } else {
         this.logger.log(`${method} ${originalUrl} ${statusCode} ${duration}ms`);
       }

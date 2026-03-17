@@ -37,7 +37,11 @@ export abstract class BaseCrudController<T extends Record<string, any>> {
   }
 
   @Put(':id')
-  async update(@Request() req: any, @Param('id') id: string, @Body() data: any) {
+  async update(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Body() data: any,
+  ) {
     const entity = await this.service.update(req.user.id, id, data);
     if (!entity) throw new NotFoundException();
     return entity;

@@ -52,10 +52,10 @@ export class SyncGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.userSockets.get(userId)!.add(client.id);
 
       // Join user-specific room
-      client.join(`user:${userId}`);
+      void client.join(`user:${userId}`);
 
       this.logger.log(`User ${userId} connected (socket: ${client.id})`);
-    } catch (error) {
+    } catch (_error) {
       this.logger.warn(`Invalid token for client ${client.id}`);
       client.disconnect();
     }
@@ -91,8 +91,11 @@ export class SyncGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('sync:ping')
-  handlePing(client: Socket) {
-    return { event: 'sync:pong', data: { timestamp: new Date().toISOString() } };
+  handlePing(_client: Socket) {
+    return {
+      event: 'sync:pong',
+      data: { timestamp: new Date().toISOString() },
+    };
   }
 
   /// Get count of online devices for a user.

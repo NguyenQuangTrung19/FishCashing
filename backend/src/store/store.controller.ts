@@ -11,8 +11,12 @@ export class StoreController {
   constructor(private readonly service: StoreService) {}
 
   @Get()
-  get(@Request() req) { return this.service.getOrCreate(req.user.id); }
+  get(@Request() req) {
+    return this.service.getOrCreate(req.user.id);
+  }
 
   @Put()
-  update(@Request() req, @Body() data: any) { return this.service.update(req.user.id, data); }
+  update(@Request() req, @Body() data: any) {
+    return this.service.update(req.user.id, data);
+  }
 }

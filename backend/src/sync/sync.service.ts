@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { DataSource, MoreThan, Repository } from 'typeorm';
+import { DataSource, MoreThan } from 'typeorm';
 
 import { Category } from '../categories/entities/category.entity';
 import { Product } from '../products/entities/product.entity';
@@ -66,7 +66,9 @@ export class SyncService {
 
           if (existing) {
             // Last-write-wins: only accept if client's updatedAt >= server's
-            const clientUpdated = new Date(record.updatedAt || record.createdAt);
+            const clientUpdated = new Date(
+              record.updatedAt || record.createdAt,
+            );
             const serverUpdated = new Date(
               (existing as any).updatedAt || (existing as any).createdAt,
             );

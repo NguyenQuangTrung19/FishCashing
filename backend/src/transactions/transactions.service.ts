@@ -11,7 +11,10 @@ export class TransactionsService {
   ) {}
 
   async create(userId: string, data: any): Promise<TransactionEntity> {
-    const entity = this.repository.create({ ...data, userId } as DeepPartial<TransactionEntity>);
+    const entity = this.repository.create({
+      ...data,
+      userId,
+    } as DeepPartial<TransactionEntity>);
     return this.repository.save(entity);
   }
 
@@ -28,9 +31,15 @@ export class TransactionsService {
     });
   }
 
-  async getChangesSince(userId: string, since: Date): Promise<TransactionEntity[]> {
+  async getChangesSince(
+    userId: string,
+    since: Date,
+  ): Promise<TransactionEntity[]> {
     return this.repository.find({
-      where: { userId, createdAt: MoreThan(since) } as FindOptionsWhere<TransactionEntity>,
+      where: {
+        userId,
+        createdAt: MoreThan(since),
+      } as FindOptionsWhere<TransactionEntity>,
     });
   }
 }
