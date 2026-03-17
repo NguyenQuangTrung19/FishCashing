@@ -16,7 +16,7 @@ import { InventoryModule } from './inventory/inventory.module';
 import { PaymentsModule } from './payments/payments.module';
 import { StoreModule } from './store/store.module';
 import { SyncModule } from './sync/sync.module';
-import { HealthController } from './health.controller';
+import { HealthController, RootController } from './health.controller';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 
 @Module({
@@ -60,7 +60,7 @@ import { RequestLoggerMiddleware } from './common/middleware/request-logger.midd
     StoreModule,
     SyncModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, RootController],
   providers: [
     // Apply rate limiting globally to all endpoints
     {

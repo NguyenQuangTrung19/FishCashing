@@ -3,6 +3,26 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { DataSource } from 'typeorm';
 import { SkipThrottle } from '@nestjs/throttler';
 
+/// Root endpoint — shows API info when visiting /
+@Controller()
+export class RootController {
+  @Get()
+  @SkipThrottle()
+  root() {
+    return {
+      name: 'FishCash POS API',
+      version: '1.0.0',
+      status: 'running',
+      docs: '/api/v1/health',
+      endpoints: {
+        health: '/api/v1/health',
+        healthDetailed: '/api/v1/health/detailed',
+        setup: 'POST /api/v1/auth/setup',
+      },
+    };
+  }
+}
+
 @ApiTags('health')
 @Controller('api/v1')
 export class HealthController {
