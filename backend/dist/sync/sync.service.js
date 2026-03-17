@@ -35,13 +35,7 @@ const TABLE_ENTITY_MAP = {
     payments: payment_entity_1.Payment,
     store_infos: store_info_entity_1.StoreInfo,
 };
-const SYNCABLE_TABLES = [
-    'categories',
-    'products',
-    'partners',
-    'trading_sessions',
-    'trade_orders',
-];
+const SYNCABLE_TABLES = Object.keys(TABLE_ENTITY_MAP);
 const ALL_TABLES = Object.keys(TABLE_ENTITY_MAP);
 let SyncService = SyncService_1 = class SyncService {
     dataSource;

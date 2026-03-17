@@ -11,25 +11,15 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Transaction = void 0;
 const typeorm_1 = require("typeorm");
-let Transaction = class Transaction {
-    id;
-    userId;
+const syncable_entity_1 = require("../../common/entities/syncable.entity");
+let Transaction = class Transaction extends syncable_entity_1.SyncableEntity {
     orderId;
     type;
     amountInCents;
     description;
     paymentMethod;
-    createdAt;
 };
 exports.Transaction = Transaction;
-__decorate([
-    (0, typeorm_1.PrimaryColumn)('uuid'),
-    __metadata("design:type", String)
-], Transaction.prototype, "id", void 0);
-__decorate([
-    (0, typeorm_1.Column)('uuid'),
-    __metadata("design:type", String)
-], Transaction.prototype, "userId", void 0);
 __decorate([
     (0, typeorm_1.Column)('uuid', { nullable: true }),
     __metadata("design:type", String)
@@ -50,10 +40,6 @@ __decorate([
     (0, typeorm_1.Column)({ default: 'cash' }),
     __metadata("design:type", String)
 ], Transaction.prototype, "paymentMethod", void 0);
-__decorate([
-    (0, typeorm_1.CreateDateColumn)(),
-    __metadata("design:type", Date)
-], Transaction.prototype, "createdAt", void 0);
 exports.Transaction = Transaction = __decorate([
     (0, typeorm_1.Entity)('transactions')
 ], Transaction);

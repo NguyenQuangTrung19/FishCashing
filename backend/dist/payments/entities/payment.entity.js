@@ -11,23 +11,13 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Payment = void 0;
 const typeorm_1 = require("typeorm");
-let Payment = class Payment {
-    id;
-    userId;
+const syncable_entity_1 = require("../../common/entities/syncable.entity");
+let Payment = class Payment extends syncable_entity_1.SyncableEntity {
     orderId;
     amountInCents;
     note;
-    createdAt;
 };
 exports.Payment = Payment;
-__decorate([
-    (0, typeorm_1.PrimaryColumn)('uuid'),
-    __metadata("design:type", String)
-], Payment.prototype, "id", void 0);
-__decorate([
-    (0, typeorm_1.Column)('uuid'),
-    __metadata("design:type", String)
-], Payment.prototype, "userId", void 0);
 __decorate([
     (0, typeorm_1.Column)('uuid'),
     __metadata("design:type", String)
@@ -40,10 +30,6 @@ __decorate([
     (0, typeorm_1.Column)({ default: '' }),
     __metadata("design:type", String)
 ], Payment.prototype, "note", void 0);
-__decorate([
-    (0, typeorm_1.CreateDateColumn)(),
-    __metadata("design:type", Date)
-], Payment.prototype, "createdAt", void 0);
 exports.Payment = Payment = __decorate([
     (0, typeorm_1.Entity)('payments')
 ], Payment);

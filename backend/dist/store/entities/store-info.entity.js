@@ -11,9 +11,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StoreInfo = void 0;
 const typeorm_1 = require("typeorm");
-let StoreInfo = class StoreInfo {
-    id;
-    userId;
+const syncable_entity_1 = require("../../common/entities/syncable.entity");
+let StoreInfo = class StoreInfo extends syncable_entity_1.SyncableEntity {
     name;
     address;
     phone;
@@ -21,14 +20,6 @@ let StoreInfo = class StoreInfo {
     qrImagePath;
 };
 exports.StoreInfo = StoreInfo;
-__decorate([
-    (0, typeorm_1.PrimaryColumn)('uuid'),
-    __metadata("design:type", String)
-], StoreInfo.prototype, "id", void 0);
-__decorate([
-    (0, typeorm_1.Column)('uuid'),
-    __metadata("design:type", String)
-], StoreInfo.prototype, "userId", void 0);
 __decorate([
     (0, typeorm_1.Column)({ default: '' }),
     __metadata("design:type", String)

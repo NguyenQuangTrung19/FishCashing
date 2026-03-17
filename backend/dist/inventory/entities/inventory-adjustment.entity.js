@@ -11,23 +11,13 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.InventoryAdjustment = void 0;
 const typeorm_1 = require("typeorm");
-let InventoryAdjustment = class InventoryAdjustment {
-    id;
-    userId;
+const syncable_entity_1 = require("../../common/entities/syncable.entity");
+let InventoryAdjustment = class InventoryAdjustment extends syncable_entity_1.SyncableEntity {
     productId;
     quantityInGrams;
     reason;
-    createdAt;
 };
 exports.InventoryAdjustment = InventoryAdjustment;
-__decorate([
-    (0, typeorm_1.PrimaryColumn)('uuid'),
-    __metadata("design:type", String)
-], InventoryAdjustment.prototype, "id", void 0);
-__decorate([
-    (0, typeorm_1.Column)('uuid'),
-    __metadata("design:type", String)
-], InventoryAdjustment.prototype, "userId", void 0);
 __decorate([
     (0, typeorm_1.Column)('uuid'),
     __metadata("design:type", String)
@@ -40,10 +30,6 @@ __decorate([
     (0, typeorm_1.Column)({ default: '' }),
     __metadata("design:type", String)
 ], InventoryAdjustment.prototype, "reason", void 0);
-__decorate([
-    (0, typeorm_1.CreateDateColumn)(),
-    __metadata("design:type", Date)
-], InventoryAdjustment.prototype, "createdAt", void 0);
 exports.InventoryAdjustment = InventoryAdjustment = __decorate([
     (0, typeorm_1.Entity)('inventory_adjustments')
 ], InventoryAdjustment);
