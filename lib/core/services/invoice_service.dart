@@ -18,6 +18,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import 'package:fishcash_pos/core/utils/formatters.dart';
+import 'package:fishcash_pos/core/utils/unit_converter.dart';
+import 'package:fishcash_pos/core/constants/app_constants.dart';
 import 'package:fishcash_pos/data/database/daos/trade_order_dao.dart';
 import 'package:fishcash_pos/data/repositories/trading_session_repository.dart';
 import 'package:fishcash_pos/data/repositories/debt_repository.dart';
@@ -835,11 +837,17 @@ class InvoiceService {
       data: items.asMap().entries.map((entry) {
         final i = entry.key;
         final item = entry.value;
-        final qty = _gramsToDecimal(item.item.quantityInGrams);
+        final baseQty = _gramsToDecimal(item.item.quantityInGrams);
+        final displayUnit = item.item.unit;
+        // Convert base quantity (kg) to display unit (e.g. tấn, tạ, yến)
+        final displayQty = UnitConverter.convertQuantity(
+              baseQty, UnitConstants.kg, displayUnit,
+            ) ??
+            baseQty;
         return [
           '${i + 1}',
           item.productName,
-          '${AppFormatters.quantity(qty)} ${item.item.unit}',
+          '${AppFormatters.quantity(displayQty)} $displayUnit',
           _formatCurrency(item.item.unitPriceInCents),
           _formatCurrency(item.item.lineTotalInCents),
         ];

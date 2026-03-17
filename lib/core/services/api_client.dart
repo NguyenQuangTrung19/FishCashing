@@ -15,7 +15,7 @@ class ApiClient {
   static const String _storeNameKey = 'fishcash_store_name';
 
   /// Default production URL — Render.com deployment
-  static const String _defaultServerUrl = 'http://localhost:3000';
+  static const String _defaultServerUrl = 'https://fishcash-api.onrender.com';
 
   SharedPreferences? _prefs;
   bool _initialized = false;
@@ -37,16 +37,13 @@ class ApiClient {
   }
 
   // --- Server URL ---
-  String get serverUrl =>
-      _p.getString(_serverUrlKey) ?? _defaultServerUrl;
-  Future<void> setServerUrl(String url) =>
-      _p.setString(_serverUrlKey, url);
+  String get serverUrl => _p.getString(_serverUrlKey) ?? _defaultServerUrl;
+  Future<void> setServerUrl(String url) => _p.setString(_serverUrlKey, url);
 
   // --- API Key (long-lived JWT) ---
   String? get apiKey => _p.getString(_apiKeyKey);
   bool get isSetup => apiKey != null;
-  Future<void> setApiKey(String key) =>
-      _p.setString(_apiKeyKey, key);
+  Future<void> setApiKey(String key) => _p.setString(_apiKeyKey, key);
   Future<void> clearApiKey() => _p.remove(_apiKeyKey);
 
   // --- Store Info ---
@@ -55,9 +52,9 @@ class ApiClient {
 
   // --- HTTP headers ---
   Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        if (apiKey case final k?) 'Authorization': 'Bearer $k',
-      };
+    'Content-Type': 'application/json',
+    if (apiKey case final k?) 'Authorization': 'Bearer $k',
+  };
 
   // --- HTTP helpers ---
   Future<Map<String, dynamic>> get(String path) async {
@@ -77,7 +74,9 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> post(
-      String path, Map<String, dynamic> body) async {
+    String path,
+    Map<String, dynamic> body,
+  ) async {
     final response = await http.post(
       Uri.parse('$serverUrl$path'),
       headers: _headers,
@@ -87,7 +86,9 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> put(
-      String path, Map<String, dynamic> body) async {
+    String path,
+    Map<String, dynamic> body,
+  ) async {
     final response = await http.put(
       Uri.parse('$serverUrl$path'),
       headers: _headers,
@@ -97,7 +98,9 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> patch(
-      String path, Map<String, dynamic> body) async {
+    String path,
+    Map<String, dynamic> body,
+  ) async {
     final response = await http.patch(
       Uri.parse('$serverUrl$path'),
       headers: _headers,
