@@ -1,4 +1,5 @@
 import { Repository, MoreThan, DeepPartial } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
 
 /// Generic CRUD service for all syncable entities.
 /// Provides: create, findAll (by userId), findOne, update, softDelete
@@ -8,6 +9,7 @@ export class BaseCrudService<T extends Record<string, any>> {
   async create(userId: string, data: any): Promise<T> {
     const entity = this.repository.create({
       ...data,
+      id: data.id || uuidv4(),
       userId,
     } as DeepPartial<T>);
     return this.repository.save(entity as any);
