@@ -1,13 +1,8 @@
-import { Entity, Column, PrimaryColumn, CreateDateColumn } from 'typeorm';
+import { Entity, Column } from 'typeorm';
+import { SyncableEntity } from '../../common/entities/syncable.entity';
 
 @Entity('payments')
-export class Payment {
-  @PrimaryColumn('uuid')
-  id: string;
-
-  @Column('uuid')
-  userId: string;
-
+export class Payment extends SyncableEntity {
   @Column('uuid')
   orderId: string;
 
@@ -16,7 +11,4 @@ export class Payment {
 
   @Column({ default: '' })
   note: string;
-
-  @CreateDateColumn()
-  createdAt: Date;
 }

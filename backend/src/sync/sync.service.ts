@@ -27,13 +27,8 @@ const TABLE_ENTITY_MAP: Record<string, any> = {
   store_infos: StoreInfo,
 };
 
-const SYNCABLE_TABLES = [
-  'categories',
-  'products',
-  'partners',
-  'trading_sessions',
-  'trade_orders',
-];
+// All entities extend SyncableEntity, all support updatedAt filter
+const SYNCABLE_TABLES = Object.keys(TABLE_ENTITY_MAP);
 
 const ALL_TABLES = Object.keys(TABLE_ENTITY_MAP);
 

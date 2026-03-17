@@ -1,13 +1,8 @@
-import { Entity, Column, PrimaryColumn } from 'typeorm';
+import { Entity, Column } from 'typeorm';
+import { SyncableEntity } from '../../common/entities/syncable.entity';
 
 @Entity('store_infos')
-export class StoreInfo {
-  @PrimaryColumn('uuid')
-  id: string;
-
-  @Column('uuid')
-  userId: string;
-
+export class StoreInfo extends SyncableEntity {
   @Column({ default: '' })
   name: string;
 

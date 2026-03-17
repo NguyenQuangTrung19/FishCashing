@@ -1,13 +1,8 @@
-import { Entity, Column, PrimaryColumn, CreateDateColumn } from 'typeorm';
+import { Entity, Column } from 'typeorm';
+import { SyncableEntity } from '../../common/entities/syncable.entity';
 
 @Entity('inventory_adjustments')
-export class InventoryAdjustment {
-  @PrimaryColumn('uuid')
-  id: string;
-
-  @Column('uuid')
-  userId: string;
-
+export class InventoryAdjustment extends SyncableEntity {
   @Column('uuid')
   productId: string;
 
@@ -16,7 +11,4 @@ export class InventoryAdjustment {
 
   @Column({ default: '' })
   reason: string;
-
-  @CreateDateColumn()
-  createdAt: Date;
 }
