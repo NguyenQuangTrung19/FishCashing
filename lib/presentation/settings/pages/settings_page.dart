@@ -15,6 +15,8 @@ import 'package:path/path.dart' as p;
 import 'package:fishcash_pos/core/theme/ocean_theme.dart';
 import 'package:fishcash_pos/core/theme/theme_notifier.dart';
 import 'package:fishcash_pos/presentation/settings/bloc/store_info_bloc.dart';
+import 'package:fishcash_pos/presentation/shared/update_dialog.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -191,6 +193,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
                       // Theme toggle section
                       _buildThemeCard(colorScheme, textTheme),
+                      const SizedBox(height: 24),
+
+                      // Update check section
+                      _buildUpdateCard(colorScheme, textTheme),
                       const SizedBox(height: 32),
 
                       // Save button
@@ -496,6 +502,65 @@ class _SettingsPageState extends State<SettingsPage> {
               style: textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                 fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUpdateCard(ColorScheme colorScheme, TextTheme textTheme) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: OceanTheme.oceanPrimary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.system_update,
+                      color: OceanTheme.oceanPrimary, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Cập nhật phần mềm',
+                  style: textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            FutureBuilder<PackageInfo>(
+              future: PackageInfo.fromPlatform(),
+              builder: (context, snapshot) {
+                final version = snapshot.data?.version ?? '...';
+                return Text(
+                  'Phiên bản hiện tại: v$version',
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => UpdateDialog.checkAndShow(context),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Kiểm tra cập nhật'),
               ),
             ),
           ],

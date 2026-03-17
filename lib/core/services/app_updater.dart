@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:archive/archive.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
@@ -25,20 +27,27 @@ class AppUpdater {
   static Future<AppUpdater> checkForUpdate() async {
     try {
       final info = await PackageInfo.fromPlatform();
-      final currentVersion = info.version; // e.g. "1.0.0"
+      final currentVersion = info.version;
+      debugPrint('[AppUpdater] Current version: $currentVersion');
 
       final response = await http
           .get(Uri.parse(
               'https://api.github.com/repos/$_repo/releases/latest'))
           .timeout(const Duration(seconds: 10));
 
+      debugPrint('[AppUpdater] GitHub API status: ${response.statusCode}');
+
       if (response.statusCode != 200) {
+        debugPrint('[AppUpdater] API error: ${response.body}');
         return const AppUpdater._();
       }
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final tagName = (data['tagName'] ?? data['tag_name'] ?? '') as String;
+      final tagName = (data['tag_name'] ?? '') as String;
       final latestVersion = tagName.replaceFirst('v', '');
+
+      debugPrint('[AppUpdater] Latest: $latestVersion, Current: $currentVersion');
+      debugPrint('[AppUpdater] Is newer: ${_isNewer(latestVersion, currentVersion)}');
 
       if (!_isNewer(latestVersion, currentVersion)) {
         return const AppUpdater._();
@@ -55,12 +64,15 @@ class AppUpdater {
         }
       }
 
+      debugPrint('[AppUpdater] Download URL: $downloadUrl');
+
       return AppUpdater._(
         latestVersion: latestVersion,
         downloadUrl: downloadUrl,
         releaseNotes: data['body'] as String?,
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[AppUpdater] Error: $e');
       return const AppUpdater._();
     }
   }
