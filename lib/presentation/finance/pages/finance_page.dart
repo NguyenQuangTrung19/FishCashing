@@ -1143,7 +1143,7 @@ class _ChartContainer extends StatelessWidget {
                   ],
                 ),
               ),
-              if (trailing case final t?) t,
+              ?trailing,
             ],
           ),
           const SizedBox(height: 16),

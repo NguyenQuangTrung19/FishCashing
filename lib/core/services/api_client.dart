@@ -157,11 +157,10 @@ class ApiClient {
     String? phone,
     String? address,
   }) async {
-    final result = await post('/api/v1/auth/setup', {
-      'storeName': storeName,
-      if (phone case final p?) 'phone': p,
-      if (address case final a?) 'address': a,
-    });
+    final body = <String, dynamic>{'storeName': storeName};
+    if (phone != null) body['phone'] = phone;
+    if (address != null) body['address'] = address;
+    final result = await post('/api/v1/auth/setup', body);
 
     // Save API key and store info
     await setApiKey(result['apiKey'] as String);
