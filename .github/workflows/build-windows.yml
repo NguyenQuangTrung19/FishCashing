@@ -26,7 +26,7 @@ jobs:
         run: flutter build windows --release
 
       - name: Create ZIP
-        run: Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "FishCash-POS-Windows.zip"
+        run: Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "FishCash-POS-Windows.zip" -Force
 
       - uses: actions/upload-artifact@v4
         with:
