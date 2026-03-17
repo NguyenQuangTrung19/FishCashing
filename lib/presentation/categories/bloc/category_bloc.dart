@@ -22,18 +22,17 @@ class CategoryBloc extends Bloc<CategoryEvent, CategoryState> {
   ) async {
     emit(state.copyWith(status: CategoryStatus.loading));
 
-    try {
-      final categories = await _repository.getAll();
-      emit(state.copyWith(
+    await emit.forEach(
+      _repository.watchAll(),
+      onData: (categories) => state.copyWith(
         status: CategoryStatus.loaded,
         categories: categories,
-      ));
-    } catch (e) {
-      emit(state.copyWith(
+      ),
+      onError: (e, _) => state.copyWith(
         status: CategoryStatus.error,
         errorMessage: e.toString(),
-      ));
-    }
+      ),
+    );
   }
 
   Future<void> _onCreate(

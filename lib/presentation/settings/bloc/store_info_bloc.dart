@@ -82,17 +82,17 @@ class StoreInfoBloc extends Bloc<StoreInfoEvent, StoreInfoState> {
   Future<void> _onLoad(
       StoreInfoLoadRequested event, Emitter<StoreInfoState> emit) async {
     emit(state.copyWith(status: StoreInfoStatus.loading));
-    try {
-      final info = await _repository.getStoreInfo();
-      emit(state.copyWith(
+
+    await emit.forEach(
+      _repository.watchStoreInfo(),
+      onData: (info) => state.copyWith(
         status: StoreInfoStatus.loaded,
         storeInfo: info,
         clearStoreInfo: info == null,
-      ));
-    } catch (e) {
-      emit(state.copyWith(
-          status: StoreInfoStatus.error, errorMessage: e.toString()));
-    }
+      ),
+      onError: (e, _) => state.copyWith(
+          status: StoreInfoStatus.error, errorMessage: e.toString()),
+    );
   }
 
   Future<void> _onSave(

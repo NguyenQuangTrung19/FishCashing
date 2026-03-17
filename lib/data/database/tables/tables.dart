@@ -16,6 +16,7 @@ class Categories extends Table {
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -32,6 +33,7 @@ class Products extends Table {
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -48,6 +50,7 @@ class Partners extends Table {
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -62,6 +65,7 @@ class TradingSessions extends Table {
   IntColumn get profitInCents => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -77,6 +81,7 @@ class TradeOrders extends Table {
   TextColumn get note => text().withDefault(const Constant(''))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -91,6 +96,7 @@ class OrderItems extends Table {
   TextColumn get unit => text()(); // unit at time of transaction
   IntColumn get unitPriceInCents => integer()(); // price × 100
   IntColumn get lineTotalInCents => integer()(); // quantity × unit_price
+  DateTimeColumn get syncedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -106,6 +112,7 @@ class Transactions extends Table {
   TextColumn get paymentMethod =>
       text().withDefault(const Constant('cash'))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -119,6 +126,7 @@ class StoreInfos extends Table {
   TextColumn get phone => text().withDefault(const Constant(''))();
   TextColumn get logoPath => text().withDefault(const Constant(''))();
   TextColumn get qrImagePath => text().withDefault(const Constant(''))();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -131,6 +139,7 @@ class InventoryAdjustments extends Table {
   IntColumn get quantityInGrams => integer()(); // negative = removed from stock
   TextColumn get reason => text().withDefault(const Constant(''))(); // e.g. 'Thanh lý', 'Hao hụt', 'Làm mới kho'
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -143,6 +152,7 @@ class Payments extends Table {
   IntColumn get amountInCents => integer()(); // payment amount × 100
   TextColumn get note => text().withDefault(const Constant(''))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};

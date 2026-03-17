@@ -68,6 +68,8 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
 
                 if (state.isSetup) ...[
                   const SizedBox(height: 16),
+                  _buildSyncCard(state),
+                  const SizedBox(height: 16),
                   _buildDangerZone(),
                 ],
               ],
@@ -181,6 +183,113 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildSyncCard(ServerConnectionState state) {
+    final isSyncing = state.syncStatus == DataSyncStatus.syncing;
+
+    String syncStatusText;
+    IconData syncIcon;
+    Color syncColor;
+
+    switch (state.syncStatus) {
+      case DataSyncStatus.syncing:
+        syncStatusText = 'Đang đồng bộ...';
+        syncIcon = Icons.sync_rounded;
+        syncColor = Colors.blue;
+      case DataSyncStatus.success:
+        syncStatusText = 'Đồng bộ thành công';
+        syncIcon = Icons.sync_rounded;
+        syncColor = Colors.green;
+      case DataSyncStatus.error:
+        syncStatusText = state.syncError ?? 'Lỗi đồng bộ';
+        syncIcon = Icons.sync_problem_rounded;
+        syncColor = Colors.red;
+      default:
+        syncStatusText = 'Chưa đồng bộ';
+        syncIcon = Icons.sync_disabled_rounded;
+        syncColor = Colors.grey;
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(syncIcon, color: syncColor, size: 24),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Đồng bộ dữ liệu',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                if (isSyncing)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              syncStatusText,
+              style: TextStyle(color: syncColor, fontSize: 13),
+            ),
+            if (state.lastSyncAt != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Lần sync cuối: ${_formatSyncTime(state.lastSyncAt!)}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+              ),
+            ],
+            if (state.syncStatus == DataSyncStatus.success) ...[
+              const SizedBox(height: 4),
+              Text(
+                '↑ ${state.lastPushed} đẩy lên · ↓ ${state.lastPulled} kéo về',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: isSyncing
+                    ? null
+                    : () {
+                        context
+                            .read<ConnectionBloc>()
+                            .add(const SyncRequested());
+                      },
+                icon: const Icon(Icons.sync_rounded),
+                label: const Text('Đồng bộ ngay'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatSyncTime(String isoString) {
+    final dt = DateTime.tryParse(isoString);
+    if (dt == null) return isoString;
+    final local = dt.toLocal();
+    return '${local.day}/${local.month}/${local.year} '
+        '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
   }
 
   Widget _buildDangerZone() {

@@ -19,6 +19,7 @@ import 'package:fishcash_pos/data/database/daos/partner_dao.dart';
 import 'package:fishcash_pos/data/database/daos/trade_order_dao.dart';
 import 'package:fishcash_pos/data/database/daos/trading_session_dao.dart';
 import 'package:fishcash_pos/data/database/daos/store_info_dao.dart';
+import 'package:fishcash_pos/data/database/daos/sync_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -35,7 +36,7 @@ part 'app_database.g.dart';
     InventoryAdjustments,
     Payments,
   ],
-  daos: [CategoryDao, ProductDao, PartnerDao, TradeOrderDao, TradingSessionDao, StoreInfoDao],
+  daos: [CategoryDao, ProductDao, PartnerDao, TradeOrderDao, TradingSessionDao, StoreInfoDao, SyncDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
@@ -44,7 +45,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration {
@@ -58,6 +59,26 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 3) {
           await m.createTable(payments);
+        }
+        if (from < 4) {
+          // Add synced_at column to all syncable tables
+          final tables = [
+            'categories',
+            'products',
+            'partners',
+            'trading_sessions',
+            'trade_orders',
+            'order_items',
+            'transactions',
+            'store_infos',
+            'inventory_adjustments',
+            'payments',
+          ];
+          for (final table in tables) {
+            await customStatement(
+              'ALTER TABLE $table ADD COLUMN synced_at INTEGER NULL',
+            );
+          }
         }
       },
     );

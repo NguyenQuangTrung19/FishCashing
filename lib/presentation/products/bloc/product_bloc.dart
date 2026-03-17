@@ -21,19 +21,17 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
   ) async {
     emit(state.copyWith(status: ProductStatus.loading));
 
-    try {
-      // Use stream's first emission for initial load
-      final products = await _repository.watchAll().first;
-      emit(state.copyWith(
+    await emit.forEach(
+      _repository.watchAll(),
+      onData: (products) => state.copyWith(
         status: ProductStatus.loaded,
         products: products,
-      ));
-    } catch (e) {
-      emit(state.copyWith(
+      ),
+      onError: (e, _) => state.copyWith(
         status: ProductStatus.error,
         errorMessage: e.toString(),
-      ));
-    }
+      ),
+    );
   }
 
   Future<void> _onCreate(

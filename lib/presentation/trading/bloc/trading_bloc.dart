@@ -112,18 +112,18 @@ class TradingBloc extends Bloc<TradingEvent, TradingState> {
     Emitter<TradingState> emit,
   ) async {
     emit(state.copyWith(status: TradingStatus.loading));
-    try {
-      final sessions = await _sessionRepo.getAll();
-      emit(state.copyWith(
+
+    await emit.forEach(
+      _sessionRepo.watchAll(),
+      onData: (sessions) => state.copyWith(
         status: TradingStatus.loaded,
         sessions: sessions,
-      ));
-    } catch (e) {
-      emit(state.copyWith(
+      ),
+      onError: (e, _) => state.copyWith(
         status: TradingStatus.error,
         errorMessage: e.toString(),
-      ));
-    }
+      ),
+    );
   }
 
   Future<void> _onCreate(

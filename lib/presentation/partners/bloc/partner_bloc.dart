@@ -124,13 +124,18 @@ class PartnerBloc extends Bloc<PartnerEvent, PartnerState> {
   Future<void> _onLoad(
       PartnersLoadRequested event, Emitter<PartnerState> emit) async {
     emit(state.copyWith(status: PartnerStatus.loading));
-    try {
-      final partners = await _repository.getAll();
-      emit(state.copyWith(status: PartnerStatus.loaded, partners: partners));
-    } catch (e) {
-      emit(state.copyWith(
-          status: PartnerStatus.error, errorMessage: e.toString()));
-    }
+
+    await emit.forEach(
+      _repository.watchAll(),
+      onData: (partners) => state.copyWith(
+        status: PartnerStatus.loaded,
+        partners: partners,
+      ),
+      onError: (e, _) => state.copyWith(
+        status: PartnerStatus.error,
+        errorMessage: e.toString(),
+      ),
+    );
   }
 
   Future<void> _onCreate(
