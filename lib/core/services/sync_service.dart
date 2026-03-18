@@ -212,13 +212,21 @@ class SyncService {
     return _snakeToCamelCase(result);
   }
 
-  /// Convert ISO date strings from server to epoch seconds for SQLite
+  /// Convert server response to SQLite-compatible format:
+  /// - camelCase keys → snake_case
+  /// - ISO date strings → epoch seconds (integer)
+  /// - boolean values → integer (1/0) for SQLite
   Map<String, dynamic> _convertDateFieldsToEpoch(Map<String, dynamic> record) {
     final result = <String, dynamic>{};
     // Convert camelCase from server to snake_case for SQLite
     for (final entry in record.entries) {
       final snakeKey = _camelToSnake(entry.key);
       var value = entry.value;
+
+      // Convert booleans to integers (SQLite stores booleans as 0/1)
+      if (value is bool) {
+        value = value ? 1 : 0;
+      }
 
       // Try to parse ISO date strings
       if (value is String && _looksLikeIsoDate(value)) {

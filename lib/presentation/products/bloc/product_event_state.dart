@@ -64,6 +64,15 @@ final class ProductToggleRequested extends ProductEvent {
   List<Object?> get props => [id, isActive];
 }
 
+final class ProductDeleteRequested extends ProductEvent {
+  final String id;
+
+  const ProductDeleteRequested({required this.id});
+
+  @override
+  List<Object?> get props => [id];
+}
+
 // === STATES ===
 
 enum ProductStatus { initial, loading, loaded, error }

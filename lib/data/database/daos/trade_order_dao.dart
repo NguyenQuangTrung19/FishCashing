@@ -364,7 +364,7 @@ class TradeOrderDao extends DatabaseAccessor<AppDatabase>
         p.phone AS partner_phone,
         p.type AS partner_type,
         COALESCE(SUM(o.subtotal_in_cents), 0) AS total_order_cents,
-        COALESCE(pay.total_paid, 0) AS total_paid_cents
+        COALESCE(SUM(pay.total_paid), 0) AS total_paid_cents
       FROM trade_orders o
       JOIN partners p ON p.id = o.partner_id
       LEFT JOIN (
@@ -408,12 +408,14 @@ class TradeOrderDao extends DatabaseAccessor<AppDatabase>
         o.note AS order_note,
         o.created_at AS order_date,
         o.session_id,
-        COALESCE(pay.total_paid, 0) AS total_paid_cents
+        COALESCE(pay.total_paid, 0) AS total_paid_cents,
+        pay.last_payment_date
       FROM trade_orders o
       LEFT JOIN (
         SELECT
           py.order_id,
-          SUM(py.amount_in_cents) AS total_paid
+          SUM(py.amount_in_cents) AS total_paid,
+          MAX(py.created_at) AS last_payment_date
         FROM payments py
         GROUP BY py.order_id
       ) pay ON pay.order_id = o.id
@@ -433,6 +435,7 @@ class TradeOrderDao extends DatabaseAccessor<AppDatabase>
               'orderDate': row.read<DateTime>('order_date'),
               'sessionId': row.readNullable<String>('session_id'),
               'totalPaidCents': row.read<int>('total_paid_cents'),
+              'lastPaymentDate': row.readNullable<DateTime>('last_payment_date'),
             })
         .toList();
   }
@@ -448,5 +451,15 @@ class TradeOrderDao extends DatabaseAccessor<AppDatabase>
           ..where((p) => p.orderId.equals(orderId))
           ..orderBy([(p) => OrderingTerm.desc(p.createdAt)]))
         .get();
+  }
+
+  /// Delete a single payment by ID
+  Future<void> deletePayment(String paymentId) async {
+    await (delete(payments)..where((p) => p.id.equals(paymentId))).go();
+  }
+
+  /// Delete all payments for an order
+  Future<void> deletePaymentsForOrder(String orderId) async {
+    await (delete(payments)..where((p) => p.orderId.equals(orderId))).go();
   }
 }

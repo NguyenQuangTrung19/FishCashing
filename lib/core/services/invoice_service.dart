@@ -97,25 +97,30 @@ class InvoiceFonts {
 class InvoiceCode {
   InvoiceCode._();
 
-  /// Session code: PGD + ddMMyyyy + 3-digit index
-  /// Example: PGD15032026001
+  /// Session code: PGD + ddMMyyyy + _HHmmss
+  /// Example: PGD15032026_143025
   static String session(DateTime date, {int index = 1}) {
-    return 'PGD${_dateStr(date)}${_idx(index)}';
+    return 'PGD${_dateStr(date)}_${_timeStr(date)}';
   }
 
-  /// All buy orders invoice: HDM + ddMMyyyy + 3-digit index
+  /// All buy orders invoice: HDM + ddMMyyyy + _HHmmss
   static String buyInvoice(DateTime date, {int index = 1}) {
-    return 'HDM${_dateStr(date)}${_idx(index)}';
+    return 'HDM${_dateStr(date)}_${_timeStr(date)}';
   }
 
-  /// All sell orders invoice: HDB + ddMMyyyy + 3-digit index
+  /// All sell orders invoice: HDB + ddMMyyyy + _HHmmss
   static String sellInvoice(DateTime date, {int index = 1}) {
-    return 'HDB${_dateStr(date)}${_idx(index)}';
+    return 'HDB${_dateStr(date)}_${_timeStr(date)}';
   }
 
-  /// Individual order invoice: HD + ddMMyyyy + 3-digit index
+  /// Individual order invoice: HD + ddMMyyyy + _HHmmss
   static String orderInvoice(DateTime date, {int index = 1}) {
-    return 'HD${_dateStr(date)}${_idx(index)}';
+    return 'HD${_dateStr(date)}_${_timeStr(date)}';
+  }
+
+  /// Debt invoice: CN + ddMMyyyy + _HHmmss
+  static String debtInvoice(DateTime date) {
+    return 'CN${_dateStr(date)}_${_timeStr(date)}';
   }
 
   /// Generate code based on filter
@@ -138,7 +143,14 @@ class InvoiceCode {
     return '$dd$mm$yyyy';
   }
 
-  static String _idx(int i) => i.toString().padLeft(3, '0');
+  static String _timeStr(DateTime d) {
+    final hh = d.hour.toString().padLeft(2, '0');
+    final mm = d.minute.toString().padLeft(2, '0');
+    final ss = d.second.toString().padLeft(2, '0');
+    return '$hh$mm$ss';
+  }
+
+
 }
 
 // =============================================
@@ -1057,7 +1069,7 @@ class InvoiceService {
   }) async {
     final pdf = pw.Document(theme: fonts.theme);
     final now = DateTime.now();
-    final code = 'CN${now.day.toString().padLeft(2, '0')}${now.month.toString().padLeft(2, '0')}${now.year}';
+    final code = InvoiceCode.debtInvoice(now);
 
     // Load logo if available
     pw.ImageProvider? logoImage;
@@ -1182,7 +1194,8 @@ class InvoiceService {
                   2: pw.Alignment.center,
                   3: pw.Alignment.centerRight,
                   4: pw.Alignment.centerRight,
-                  5: pw.Alignment.centerRight,
+                  5: pw.Alignment.center,
+                  6: pw.Alignment.centerRight,
                 },
                 cellAlignments: {
                   0: pw.Alignment.center,
@@ -1190,9 +1203,10 @@ class InvoiceService {
                   2: pw.Alignment.center,
                   3: pw.Alignment.centerRight,
                   4: pw.Alignment.centerRight,
-                  5: pw.Alignment.centerRight,
+                  5: pw.Alignment.center,
+                  6: pw.Alignment.centerRight,
                 },
-                headers: ['#', 'Ngày', 'Loại', 'Tổng đơn', 'Đã trả', 'Còn nợ'],
+                headers: ['#', 'Ngày đơn', 'Loại', 'Tổng đơn', 'Đã trả', 'Ngày TT', 'Còn nợ/Trả dư'],
                 data: [
                   for (int i = 0; i < orders.length; i++)
                     [
@@ -1201,7 +1215,12 @@ class InvoiceService {
                       orders[i].orderType == 'buy' ? 'Mua' : 'Bán',
                       _currencyFormat.format(orders[i].subtotal.toDouble()),
                       _currencyFormat.format(orders[i].totalPaid.toDouble()),
-                      _currencyFormat.format(orders[i].remaining.toDouble()),
+                      orders[i].lastPaymentDate != null
+                          ? DateFormat('dd/MM/yyyy').format(orders[i].lastPaymentDate!)
+                          : '-',
+                      orders[i].isOverpaid
+                          ? 'Trả dư ${_currencyFormat.format(orders[i].overpaidAmount.toDouble())}'
+                          : _currencyFormat.format(orders[i].remaining.toDouble()),
                     ],
                 ],
               ),
@@ -1236,19 +1255,25 @@ class InvoiceService {
                     pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.end,
                       children: [
-                        pw.Text('TỔNG CÔNG NỢ',
+                        pw.Text(
+                          totalDebt < Decimal.zero ? 'ỨNG TRƯỚC' : 'TỔNG CÔNG NỢ',
                             style: fonts.style(
                                 fontSize: 9,
                                 fontWeight: pw.FontWeight.bold,
                                 color: PdfColors.grey700)),
                         pw.Text(
-                          _currencyFormat.format(totalDebt.toDouble()),
+                          _currencyFormat.format(
+                              totalDebt < Decimal.zero
+                                  ? (-totalDebt).toDouble()
+                                  : totalDebt.toDouble()),
                           style: fonts.style(
                             fontSize: 16,
                             fontWeight: pw.FontWeight.bold,
                             color: totalDebt > Decimal.zero
                                 ? const PdfColor.fromInt(0xFFD32F2F)
-                                : const PdfColor.fromInt(0xFF2E7D32),
+                                : totalDebt < Decimal.zero
+                                    ? const PdfColor.fromInt(0xFF1565C0)
+                                    : const PdfColor.fromInt(0xFF2E7D32),
                           ),
                         ),
                       ],

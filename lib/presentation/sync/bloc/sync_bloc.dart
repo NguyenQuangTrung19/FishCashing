@@ -1,18 +1,15 @@
-/// ConnectionBloc — manages store setup + server connectivity + sync.
+/// ConnectionBloc — manages store setup + server connectivity + manual sync.
 ///
-/// Replaces the old SyncBloc. No login/register needed.
-/// User just enters store info → auto-provision on server.
-/// Now also handles data sync (push/pull) and realtime WebSocket sync.
+/// Offline-first architecture. No auto-sync.
+/// User manually triggers sync via button when needed (backup to server).
 library;
 
-import 'dart:async';
 import 'dart:developer' as dev;
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fishcash_pos/core/services/api_client.dart';
 import 'package:fishcash_pos/core/services/sync_service.dart';
-import 'package:fishcash_pos/core/services/sync_socket_service.dart';
 
 // --- Events ---
 abstract class ConnectionEvent extends Equatable {
@@ -45,19 +42,14 @@ class ConnectionResetRequested extends ConnectionEvent {
   const ConnectionResetRequested();
 }
 
-/// Trigger a full sync (push + pull)
+/// Trigger a full sync (push + pull) — manual only
 class SyncRequested extends ConnectionEvent {
   const SyncRequested();
 }
 
-/// Trigger only a push sync
+/// Trigger only a push sync — manual only
 class SyncPushRequested extends ConnectionEvent {
   const SyncPushRequested();
-}
-
-/// Trigger only a pull sync (used by WebSocket listener)
-class _SyncPullRequested extends ConnectionEvent {
-  const _SyncPullRequested();
 }
 
 // --- States ---
@@ -130,18 +122,12 @@ class ServerConnectionState extends Equatable {
 class ConnectionBloc extends Bloc<ConnectionEvent, ServerConnectionState> {
   final ApiClient _api;
   final SyncService? _syncService;
-  final SyncSocketService? _socketService;
-
-  StreamSubscription<void>? _syncUpdatedSub;
-  StreamSubscription<void>? _localChangeSub;
 
   ConnectionBloc({
     required ApiClient api,
     SyncService? syncService,
-    SyncSocketService? socketService,
   })  : _api = api,
         _syncService = syncService,
-        _socketService = socketService,
         super(const ServerConnectionState()) {
     on<ConnectionInitRequested>(_onInit);
     on<StoreSetupRequested>(_onSetupStore);
@@ -149,33 +135,6 @@ class ConnectionBloc extends Bloc<ConnectionEvent, ServerConnectionState> {
     on<ConnectionResetRequested>(_onReset);
     on<SyncRequested>(_onSyncRequested);
     on<SyncPushRequested>(_onSyncPush);
-    on<_SyncPullRequested>(_onSyncPull);
-
-    // Listen to WebSocket streams for realtime sync
-    _setupSocketListeners();
-  }
-
-  void _setupSocketListeners() {
-    if (_socketService == null) return;
-
-    // When server broadcasts sync:updated → auto pull
-    _syncUpdatedSub = _socketService.onSyncUpdated.listen((_) {
-      if (_api.isSetup && _syncService != null) {
-        add(const _SyncPullRequested());
-      }
-    });
-
-    // When local data changes (debounced) → auto push
-    _localChangeSub = _socketService.onLocalChange.listen((_) {
-      if (_api.isSetup && _syncService != null) {
-        add(const SyncPushRequested());
-      }
-    });
-  }
-
-  void _connectSocket() {
-    if (_socketService == null || !_api.isSetup || _api.apiKey == null) return;
-    _socketService.connect(_api.serverUrl, _api.apiKey!);
   }
 
   Future<void> _onInit(
@@ -183,7 +142,6 @@ class ConnectionBloc extends Bloc<ConnectionEvent, ServerConnectionState> {
     await _api.init();
 
     if (_api.isSetup) {
-      // Load last sync time
       final lastSync = await _syncService?.getLastSyncAt();
 
       emit(ServerConnectionState(
@@ -193,14 +151,7 @@ class ConnectionBloc extends Bloc<ConnectionEvent, ServerConnectionState> {
         serverUrl: _api.serverUrl,
         lastSyncAt: lastSync,
       ));
-
-      // Connect WebSocket for realtime sync
-      _connectSocket();
-
-      // Auto sync on init (non-blocking)
-      if (_syncService != null) {
-        add(const SyncRequested());
-      }
+      // No auto-sync on init — user controls sync manually
     } else {
       emit(ServerConnectionState(
         status: ConnectionStatus.needsSetup,
@@ -225,14 +176,6 @@ class ConnectionBloc extends Bloc<ConnectionEvent, ServerConnectionState> {
         storeId: result['storeId'] as String?,
         serverUrl: _api.serverUrl,
       ));
-
-      // Connect WebSocket after setup
-      _connectSocket();
-
-      // Auto sync after setup
-      if (_syncService != null) {
-        add(const SyncRequested());
-      }
     } on ApiException catch (e) {
       emit(state.copyWith(status: ConnectionStatus.error, error: e.message));
     } catch (e) {
@@ -246,17 +189,15 @@ class ConnectionBloc extends Bloc<ConnectionEvent, ServerConnectionState> {
       ServerUrlChanged event, Emitter<ServerConnectionState> emit) async {
     await _api.setServerUrl(event.url);
     emit(state.copyWith(serverUrl: event.url));
-    // Reconnect socket with new URL
-    _connectSocket();
   }
 
   Future<void> _onReset(
       ConnectionResetRequested event, Emitter<ServerConnectionState> emit) async {
-    _socketService?.disconnect();
     await _api.resetAll();
     emit(const ServerConnectionState(status: ConnectionStatus.needsSetup));
   }
 
+  /// Manual full sync: push local → pull server
   Future<void> _onSyncRequested(
       SyncRequested event, Emitter<ServerConnectionState> emit) async {
     if (_syncService == null || !_api.isSetup) return;
@@ -288,6 +229,7 @@ class ConnectionBloc extends Bloc<ConnectionEvent, ServerConnectionState> {
     }
   }
 
+  /// Manual push only
   Future<void> _onSyncPush(
       SyncPushRequested event, Emitter<ServerConnectionState> emit) async {
     if (_syncService == null || !_api.isSetup) return;
@@ -305,32 +247,5 @@ class ConnectionBloc extends Bloc<ConnectionEvent, ServerConnectionState> {
     } catch (e) {
       dev.log('[ConnectionBloc] Push sync failed: $e');
     }
-  }
-
-  Future<void> _onSyncPull(
-      _SyncPullRequested event, Emitter<ServerConnectionState> emit) async {
-    if (_syncService == null || !_api.isSetup) return;
-
-    try {
-      final result = await _syncService.pull();
-      if (result.success && result.recordsPulled > 0) {
-        final lastSync = await _syncService.getLastSyncAt();
-        emit(state.copyWith(
-          syncStatus: DataSyncStatus.success,
-          lastSyncAt: lastSync,
-          lastPulled: result.recordsPulled,
-        ));
-      }
-    } catch (e) {
-      dev.log('[ConnectionBloc] Pull sync failed: $e');
-    }
-  }
-
-  @override
-  Future<void> close() {
-    _syncUpdatedSub?.cancel();
-    _localChangeSub?.cancel();
-    _socketService?.dispose();
-    return super.close();
   }
 }

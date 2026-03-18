@@ -283,7 +283,7 @@ class _DebtTab extends StatelessWidget {
 
     // Summary row
     final totalDebt = debts.fold(Decimal.zero, (sum, d) => sum + d.debt);
-    final partnersWithDebt = debts.where((d) => !d.isFullyPaid).length;
+    final partnersWithDebt = debts.where((d) => d.hasDebt).length;
 
     return Column(
       children: [
@@ -402,7 +402,11 @@ class _DebtPartnerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final debtColor = debt.isFullyPaid ? OceanTheme.sellGreen : Colors.red;
+    final debtColor = debt.hasAdvance
+        ? OceanTheme.oceanPrimary
+        : debt.hasDebt
+            ? Colors.red
+            : OceanTheme.sellGreen;
     final paidPercent = debt.totalOrder > Decimal.zero
         ? (debt.totalPaid / debt.totalOrder)
             .toDecimal(scaleOnInfinitePrecision: 2)
@@ -462,9 +466,11 @@ class _DebtPartnerCard extends StatelessWidget {
                           Border.all(color: debtColor.withValues(alpha: 0.3)),
                     ),
                     child: Text(
-                      debt.isFullyPaid
-                          ? 'Đã thanh toán'
-                          : AppFormatters.currency(debt.debt),
+                      debt.hasAdvance
+                          ? 'Ứng trước: ${AppFormatters.currency(debt.advance)}'
+                          : debt.hasDebt
+                              ? AppFormatters.currency(debt.debt)
+                              : 'Đã thanh toán',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -514,7 +520,7 @@ class _DebtPartnerCard extends StatelessWidget {
                                 .colorScheme
                                 .surfaceContainerHighest,
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              debt.isFullyPaid ? OceanTheme.sellGreen : accentColor,
+                              debt.hasDebt ? accentColor : OceanTheme.sellGreen,
                             ),
                           ),
                         ),
@@ -538,7 +544,7 @@ class _DebtPartnerCard extends StatelessWidget {
 // PARTNER DEBT DETAIL — orders + payments
 // ==========================================
 
-class _PartnerDebtDetail extends StatelessWidget {
+class _PartnerDebtDetail extends StatefulWidget {
   final String partnerId;
   final String partnerName;
   final DebtState state;
@@ -552,8 +558,102 @@ class _PartnerDebtDetail extends StatelessWidget {
   });
 
   @override
+  State<_PartnerDebtDetail> createState() => _PartnerDebtDetailState();
+}
+
+class _PartnerDebtDetailState extends State<_PartnerDebtDetail> {
+  bool _isSelectionMode = false;
+  final Set<String> _selectedIds = {};
+
+  void _toggleSelectionMode() {
+    setState(() {
+      _isSelectionMode = !_isSelectionMode;
+      if (!_isSelectionMode) _selectedIds.clear();
+    });
+  }
+
+  void _toggleSelection(String orderId) {
+    setState(() {
+      if (_selectedIds.contains(orderId)) {
+        _selectedIds.remove(orderId);
+      } else {
+        _selectedIds.add(orderId);
+      }
+    });
+  }
+
+  void _selectAll(List<DebtOrderDetail> orders) {
+    setState(() {
+      _selectedIds.addAll(orders.map((o) => o.orderId));
+    });
+  }
+
+  void _deselectAll() {
+    setState(() => _selectedIds.clear());
+  }
+
+  void _exportSelected(BuildContext context) {
+    final orders = widget.state.partnerOrders
+        .where((o) => _selectedIds.contains(o.orderId))
+        .toList();
+    if (orders.isEmpty) return;
+
+    final totalOrder =
+        orders.fold(Decimal.zero, (sum, o) => sum + o.subtotal);
+    final totalPaid =
+        orders.fold(Decimal.zero, (sum, o) => sum + o.totalPaid);
+    final totalDebt = totalOrder - totalPaid;
+
+    _exportDebtInvoice(context, widget.partnerName, orders, totalDebt);
+  }
+
+  void _deleteSelected(BuildContext context) {
+    if (_selectedIds.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.delete_forever, color: Colors.red, size: 40),
+        title: const Text('Xóa công nợ đã chọn'),
+        content: Text(
+          'Bạn có chắc muốn xóa ${_selectedIds.length} đơn hàng '
+          'và tất cả thanh toán liên quan?\n\n'
+          'Hành động này không thể hoàn tác!',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Hủy'),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              for (final id in _selectedIds) {
+                context.read<DebtBloc>().add(DebtOrderDeleted(id));
+              }
+              Navigator.of(ctx).pop();
+              setState(() {
+                _selectedIds.clear();
+                _isSelectionMode = false;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Đã xóa các đơn hàng đã chọn'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            },
+            icon: const Icon(Icons.delete),
+            label: const Text('Xóa'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final orders = state.partnerOrders;
+    final orders = widget.state.partnerOrders;
     final totalOrder =
         orders.fold(Decimal.zero, (sum, o) => sum + o.subtotal);
     final totalPaid =
@@ -562,18 +662,44 @@ class _PartnerDebtDetail extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        leading:
-            IconButton(icon: const Icon(Icons.arrow_back), onPressed: onBack),
-        title: Text(partnerName),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: _isSelectionMode ? _toggleSelectionMode : widget.onBack,
+        ),
+        title: Text(
+          _isSelectionMode
+              ? 'Đã chọn ${_selectedIds.length}/${orders.length}'
+              : widget.partnerName,
+        ),
         actions: [
-          // Export debt invoice
-          if (orders.isNotEmpty)
+          // Multi-select toggle
+          if (orders.isNotEmpty && !_isSelectionMode) ...[
+            IconButton(
+              icon: const Icon(Icons.checklist),
+              tooltip: 'Chọn nhiều',
+              onPressed: _toggleSelectionMode,
+            ),
+            // Export all
             IconButton(
               icon: const Icon(Icons.picture_as_pdf),
               tooltip: 'Xuất HĐ công nợ',
-              onPressed: () =>
-                  _exportDebtInvoice(context, partnerName, orders, totalDebt),
+              onPressed: () => _exportDebtInvoice(
+                  context, widget.partnerName, orders, totalDebt),
             ),
+          ],
+          if (_isSelectionMode) ...[
+            TextButton(
+              onPressed: _selectedIds.length == orders.length
+                  ? _deselectAll
+                  : () => _selectAll(orders),
+              child: Text(
+                _selectedIds.length == orders.length
+                    ? 'Bỏ chọn'
+                    : 'Chọn tất cả',
+                style: const TextStyle(fontSize: 13),
+              ),
+            ),
+          ],
         ],
       ),
       body: Column(
@@ -605,11 +731,15 @@ class _PartnerDebtDetail extends StatelessWidget {
                     ),
                     Expanded(
                       child: _DetailStat(
-                        label: 'Còn nợ',
-                        value: AppFormatters.currency(totalDebt),
+                        label:
+                            totalDebt < Decimal.zero ? 'Ứng trước' : 'Còn nợ',
+                        value: AppFormatters.currency(
+                            totalDebt < Decimal.zero ? -totalDebt : totalDebt),
                         color: totalDebt > Decimal.zero
                             ? Colors.red
-                            : OceanTheme.sellGreen,
+                            : totalDebt < Decimal.zero
+                                ? OceanTheme.oceanPrimary
+                                : OceanTheme.sellGreen,
                         bold: true,
                       ),
                     ),
@@ -651,13 +781,109 @@ class _PartnerDebtDetail extends StatelessWidget {
                     itemCount: orders.length,
                     itemBuilder: (context, index) {
                       final order = orders[index];
+                      if (_isSelectionMode) {
+                        return _SelectableOrderCard(
+                          order: order,
+                          isSelected:
+                              _selectedIds.contains(order.orderId),
+                          onToggle: () =>
+                              _toggleSelection(order.orderId),
+                        );
+                      }
                       return _OrderDebtCard(
                         order: order,
                         onAddPayment: () =>
                             _showPaymentDialog(context, order),
+                        onDelete: () =>
+                            _confirmDeleteOrder(context, order),
                       );
                     },
                   ),
+          ),
+
+          // Bottom action bar in selection mode
+          if (_isSelectionMode && _selectedIds.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                top: false,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _deleteSelected(context),
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        label: Text('Xóa (${_selectedIds.length})'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: () => _exportSelected(context),
+                        icon:
+                            const Icon(Icons.picture_as_pdf, size: 18),
+                        label: Text('Xuất PDF (${_selectedIds.length})'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: OceanTheme.oceanPrimary,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteOrder(BuildContext context, DebtOrderDetail order) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.delete_forever, color: Colors.red, size: 40),
+        title: const Text('Xóa công nợ'),
+        content: Text(
+          'Bạn có chắc muốn xóa đơn hàng này và tất cả các thanh toán liên quan?\n\n'
+          'Tổng đơn: ${AppFormatters.currency(order.subtotal)}\n'
+          'Đã trả: ${AppFormatters.currency(order.totalPaid)}\n\n'
+          'Hành động này không thể hoàn tác!',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Hủy'),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              context.read<DebtBloc>().add(DebtOrderDeleted(order.orderId));
+              Navigator.of(ctx).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Đã xóa đơn hàng và các thanh toán liên quan'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            },
+            icon: const Icon(Icons.delete),
+            label: const Text('Xóa'),
           ),
         ],
       ),
@@ -669,152 +895,216 @@ class _PartnerDebtDetail extends StatelessWidget {
     final noteController = TextEditingController();
     final colorScheme = Theme.of(context).colorScheme;
     final formatter = _CurrencyInputFormatter();
+    DateTime selectedDate = DateTime.now();
+
+    // Compute status text for order info
+    final remainingLabel = order.isOverpaid
+        ? 'Trả dư: ${AppFormatters.currency(order.overpaidAmount)}'
+        : 'Còn nợ: ${AppFormatters.currency(order.remaining)}';
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        icon: Icon(Icons.payment, color: OceanTheme.sellGreen, size: 40),
-        title: const Text('Ghi nhận thanh toán'),
-        content: SizedBox(
-          width: 380,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Order info
-              Card(
-                color: colorScheme.surfaceContainerHighest,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          icon: Icon(Icons.payment, color: OceanTheme.sellGreen, size: 40),
+          title: const Text('Ghi nhận thanh toán'),
+          content: SizedBox(
+            width: 380,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Order info
+                Card(
+                  color: colorScheme.surfaceContainerHighest,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Icon(
+                          order.orderType == 'buy'
+                              ? Icons.shopping_cart
+                              : Icons.storefront,
+                          color: order.orderType == 'buy'
+                              ? OceanTheme.buyBlue
+                              : OceanTheme.sellGreen,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${order.orderType == "buy" ? "Đơn mua" : "Đơn bán"} • ${AppFormatters.dateTime(order.orderDate)}',
+                                style: const TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.w600),
+                              ),
+                              Text(
+                                'Tổng: ${AppFormatters.currency(order.subtotal)} • $remainingLabel',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: colorScheme.onSurfaceVariant),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Payment date picker
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now().add(const Duration(days: 1)),
+                      helpText: 'Chọn ngày thanh toán',
+                    );
+                    if (picked != null) {
+                      setDialogState(() {
+                        selectedDate = DateTime(
+                          picked.year, picked.month, picked.day,
+                          DateTime.now().hour, DateTime.now().minute,
+                        );
+                      });
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Ngày thanh toán',
+                      prefixIcon: Icon(Icons.calendar_today),
+                      border: OutlineInputBorder(),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            AppFormatters.dateTime(selectedDate),
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            setDialogState(() {
+                              selectedDate = DateTime.now();
+                            });
+                          },
+                          child: const Text('Hôm nay',
+                              style: TextStyle(fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Amount with currency formatter
+                TextField(
+                  controller: amountController,
+                  keyboardType: TextInputType.number,
+                  autofocus: true,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    formatter,
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'Số tiền thanh toán',
+                    hintText: order.hasDebt
+                        ? 'VD: ${_formatWithDots(order.remaining.toDouble().round())}'
+                        : 'Nhập số tiền',
+                    prefixIcon: const Icon(Icons.monetization_on),
+                    suffixText: 'đ',
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Quick fill button (only when has remaining debt)
+                if (order.hasDebt)
+                  Row(
                     children: [
-                      Icon(
-                        order.orderType == 'buy'
-                            ? Icons.shopping_cart
-                            : Icons.storefront,
-                        color: order.orderType == 'buy'
-                            ? OceanTheme.buyBlue
-                            : OceanTheme.sellGreen,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${order.orderType == "buy" ? "Đơn mua" : "Đơn bán"} • ${AppFormatters.dateTime(order.orderDate)}',
-                              style: const TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w600),
-                            ),
-                            Text(
-                              'Tổng: ${AppFormatters.currency(order.subtotal)} • Còn nợ: ${AppFormatters.currency(order.remaining)}',
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: colorScheme.onSurfaceVariant),
-                            ),
-                          ],
+                      TextButton.icon(
+                        onPressed: () {
+                          final remainingInt =
+                              order.remaining.toDouble().round();
+                          amountController.text = _formatWithDots(remainingInt);
+                          amountController.selection =
+                              TextSelection.collapsed(
+                                  offset: amountController.text.length);
+                        },
+                        icon: const Icon(Icons.flash_on, size: 16),
+                        label: const Text('Trả hết',
+                            style: TextStyle(fontSize: 12)),
+                        style: TextButton.styleFrom(
+                          foregroundColor: OceanTheme.sellGreen,
                         ),
                       ),
                     ],
                   ),
-                ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 8),
 
-              // Amount with currency formatter
-              TextField(
-                controller: amountController,
-                keyboardType: TextInputType.number,
-                autofocus: true,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  formatter,
-                ],
-                decoration: InputDecoration(
-                  labelText: 'Số tiền thanh toán',
-                  hintText:
-                      'VD: ${_formatWithDots(order.remaining.toDouble().round())}',
-                  prefixIcon: const Icon(Icons.monetization_on),
-                  suffixText: 'đ',
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Quick fill button
-              Row(
-                children: [
-                  TextButton.icon(
-                    onPressed: () {
-                      final remainingInt = order.remaining.toDouble().round();
-                      amountController.text = _formatWithDots(remainingInt);
-                      amountController.selection = TextSelection.collapsed(
-                          offset: amountController.text.length);
-                    },
-                    icon: const Icon(Icons.flash_on, size: 16),
-                    label: const Text('Trả hết', style: TextStyle(fontSize: 12)),
-                    style: TextButton.styleFrom(
-                      foregroundColor: OceanTheme.sellGreen,
-                    ),
+                // Note
+                TextField(
+                  controller: noteController,
+                  decoration: const InputDecoration(
+                    labelText: 'Ghi chú (tùy chọn)',
+                    hintText: 'VD: Trả tiền mặt, CK ngân hàng...',
+                    prefixIcon: Icon(Icons.note_alt),
+                    border: OutlineInputBorder(),
                   ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              // Note
-              TextField(
-                controller: noteController,
-                decoration: const InputDecoration(
-                  labelText: 'Ghi chú (tùy chọn)',
-                  hintText: 'VD: Trả tiền mặt, CK ngân hàng...',
-                  prefixIcon: Icon(Icons.note_alt),
-                  border: OutlineInputBorder(),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Hủy'),
-          ),
-          FilledButton.icon(
-            style:
-                FilledButton.styleFrom(backgroundColor: OceanTheme.sellGreen),
-            onPressed: () {
-              final rawText = amountController.text.replaceAll('.', '').trim();
-              if (rawText.isEmpty) return;
-              final amount = int.tryParse(rawText);
-              if (amount == null || amount <= 0) {
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Hủy'),
+            ),
+            FilledButton.icon(
+              style:
+                  FilledButton.styleFrom(backgroundColor: OceanTheme.sellGreen),
+              onPressed: () {
+                final rawText =
+                    amountController.text.replaceAll('.', '').trim();
+                if (rawText.isEmpty) return;
+                final amount = int.tryParse(rawText);
+                if (amount == null || amount <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Số tiền không hợp lệ'),
+                      backgroundColor: colorScheme.error,
+                    ),
+                  );
+                  return;
+                }
+                final amountCents = amount * 100;
+
+                context.read<DebtBloc>().add(DebtPaymentAdded(
+                      orderId: order.orderId,
+                      amountInCents: amountCents,
+                      note: noteController.text.trim(),
+                      paymentDate: selectedDate,
+                    ));
+                Navigator.of(ctx).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: const Text('Số tiền không hợp lệ'),
-                    backgroundColor: colorScheme.error,
+                    content: Text(
+                        'Đã ghi nhận thanh toán ${_formatWithDots(amount)}đ'),
+                    backgroundColor: OceanTheme.sellGreen,
                   ),
                 );
-                return;
-              }
-              final amountCents = amount * 100;
-
-              context.read<DebtBloc>().add(DebtPaymentAdded(
-                    orderId: order.orderId,
-                    amountInCents: amountCents,
-                    note: noteController.text.trim(),
-                  ));
-              Navigator.of(ctx).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                      'Đã ghi nhận thanh toán ${_formatWithDots(amount)}đ'),
-                  backgroundColor: OceanTheme.sellGreen,
-                ),
-              );
-            },
-            icon: const Icon(Icons.check),
-            label: const Text('Xác nhận'),
-          ),
-        ],
+              },
+              icon: const Icon(Icons.check),
+              label: const Text('Xác nhận'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -906,23 +1196,144 @@ class _PartnerDebtDetail extends StatelessWidget {
 }
 
 // ==========================================
-// ORDER DEBT CARD — single order with payment status
+// ==========================================
+// SELECTABLE ORDER CARD — for multi-select mode
 // ==========================================
 
-class _OrderDebtCard extends StatelessWidget {
+class _SelectableOrderCard extends StatelessWidget {
   final DebtOrderDetail order;
-  final VoidCallback onAddPayment;
+  final bool isSelected;
+  final VoidCallback onToggle;
 
-  const _OrderDebtCard({
+  const _SelectableOrderCard({
     required this.order,
-    required this.onAddPayment,
+    required this.isSelected,
+    required this.onToggle,
   });
 
   @override
   Widget build(BuildContext context) {
     final isBuy = order.orderType == 'buy';
     final accentColor = isBuy ? OceanTheme.buyBlue : OceanTheme.sellGreen;
-    final statusColor = order.isFullyPaid ? OceanTheme.sellGreen : Colors.red;
+    final statusColor = order.isOverpaid
+        ? OceanTheme.oceanPrimary
+        : order.isFullyPaid
+            ? OceanTheme.sellGreen
+            : Colors.red;
+    final statusText = order.isOverpaid
+        ? 'Trả dư'
+        : order.isFullyPaid
+            ? 'Đã trả'
+            : 'Còn nợ';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      color: isSelected
+          ? OceanTheme.oceanPrimary.withValues(alpha: 0.08)
+          : null,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isSelected
+            ? BorderSide(color: OceanTheme.oceanPrimary, width: 1.5)
+            : BorderSide.none,
+      ),
+      child: InkWell(
+        onTap: onToggle,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              // Checkbox
+              Checkbox(
+                value: isSelected,
+                onChanged: (_) => onToggle(),
+                activeColor: OceanTheme.oceanPrimary,
+                visualDensity: VisualDensity.compact,
+              ),
+              const SizedBox(width: 4),
+              // Icon
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: accentColor.withValues(alpha: 0.12),
+                child: Icon(
+                  isBuy ? Icons.shopping_cart : Icons.storefront,
+                  color: accentColor,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Order info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${isBuy ? "Đơn mua" : "Đơn bán"} • ${AppFormatters.dateTime(order.orderDate)}',
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Tổng: ${AppFormatters.currency(order.subtotal)} • Trả: ${AppFormatters.currency(order.totalPaid)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Status badge
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border:
+                      Border.all(color: statusColor.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  statusText,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: statusColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ORDER DEBT CARD — single order with payment status
+// ==========================================
+
+class _OrderDebtCard extends StatelessWidget {
+  final DebtOrderDetail order;
+  final VoidCallback onAddPayment;
+  final VoidCallback onDelete;
+
+  const _OrderDebtCard({
+    required this.order,
+    required this.onAddPayment,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isBuy = order.orderType == 'buy';
+    final accentColor = isBuy ? OceanTheme.buyBlue : OceanTheme.sellGreen;
+    final statusColor = order.isOverpaid
+        ? OceanTheme.oceanPrimary
+        : order.isFullyPaid
+            ? OceanTheme.sellGreen
+            : Colors.red;
     final paidPercent = order.subtotal > Decimal.zero
         ? (order.totalPaid / order.subtotal)
             .toDecimal(scaleOnInfinitePrecision: 2)
@@ -982,7 +1393,11 @@ class _OrderDebtCard extends StatelessWidget {
                         Border.all(color: statusColor.withValues(alpha: 0.3)),
                   ),
                   child: Text(
-                    order.isFullyPaid ? 'Đã trả' : 'Còn nợ',
+                    order.isOverpaid
+                        ? 'Trả dư'
+                        : order.isFullyPaid
+                            ? 'Đã trả'
+                            : 'Còn nợ',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -1032,13 +1447,17 @@ class _OrderDebtCard extends StatelessWidget {
                 Expanded(
                   child: Column(
                     children: [
-                      Text('Còn nợ',
+                      Text(
+                          order.isOverpaid ? 'Trả dư' : 'Còn nợ',
                           style: TextStyle(
                               fontSize: 10,
                               color: Theme.of(context)
                                   .colorScheme
                                   .onSurfaceVariant)),
-                      Text(AppFormatters.currency(order.remaining),
+                      Text(
+                          order.isOverpaid
+                              ? AppFormatters.currency(order.overpaidAmount)
+                              : AppFormatters.currency(order.remaining),
                           style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
@@ -1064,25 +1483,45 @@ class _OrderDebtCard extends StatelessWidget {
               ),
             ),
 
-            // Add payment button
-            if (!order.isFullyPaid) ...[
+            // Buttons row
+            ...[
               const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: SizedBox(
-                  height: 30,
-                  child: FilledButton.icon(
-                    onPressed: onAddPayment,
-                    icon: const Icon(Icons.payment, size: 14),
-                    label: const Text('Thanh toán',
-                        style: TextStyle(fontSize: 12)),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: OceanTheme.sellGreen,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      visualDensity: VisualDensity.compact,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  // Delete button
+                  SizedBox(
+                    height: 30,
+                    child: OutlinedButton.icon(
+                      onPressed: onDelete,
+                      icon: const Icon(Icons.delete_outline, size: 14),
+                      label: const Text('Xóa',
+                          style: TextStyle(fontSize: 12)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red, width: 0.5),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        visualDensity: VisualDensity.compact,
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  // Payment button
+                  SizedBox(
+                    height: 30,
+                    child: FilledButton.icon(
+                      onPressed: onAddPayment,
+                      icon: const Icon(Icons.payment, size: 14),
+                      label: const Text('Thanh toán',
+                          style: TextStyle(fontSize: 12)),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: OceanTheme.sellGreen,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ],
@@ -1226,8 +1665,8 @@ Future<void> _exportPartnerSignature(
     BuildContext context, DebtState state) async {
   // Combine all partners with outstanding debt
   final allPartners = [
-    ...state.receivables.where((d) => !d.isFullyPaid).map((d) => (d, 'Phải thu')),
-    ...state.payables.where((d) => !d.isFullyPaid).map((d) => (d, 'Phải trả')),
+    ...state.receivables.where((d) => d.hasDebt).map((d) => (d, 'Phải thu')),
+    ...state.payables.where((d) => d.hasDebt).map((d) => (d, 'Phải trả')),
   ];
 
   if (allPartners.isEmpty) {

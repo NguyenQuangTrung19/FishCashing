@@ -49,7 +49,7 @@ void main() {
         expect(result.first.totalOrder.toDouble(), 50000.0);
         expect(result.first.totalPaid.toDouble(), 30000.0);
         expect(result.first.debt.toDouble(), 20000.0);
-        expect(result.first.isFullyPaid, false);
+        expect(result.first.hasDebt, true);
       });
 
       test('should return empty list when no receivables', () async {
@@ -74,7 +74,7 @@ void main() {
                 ]);
 
         final result = await repository.getReceivables();
-        expect(result.first.isFullyPaid, true);
+        expect(result.first.hasDebt, false);
         expect(result.first.debt.toDouble(), 0.0);
       });
     });
@@ -98,7 +98,7 @@ void main() {
         expect(result.length, 1);
         expect(result.first.partnerName, 'Ghe Ông Ba');
         expect(result.first.debt.toDouble(), 100000.0);
-        expect(result.first.isFullyPaid, false);
+        expect(result.first.hasDebt, true);
       });
     });
 

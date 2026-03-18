@@ -21,7 +21,7 @@ class DebtSummary {
   final String partnerType; // 'supplier' or 'buyer'
   final Decimal totalOrder; // tổng giá trị đơn hàng
   final Decimal totalPaid; // tổng đã thanh toán
-  final Decimal debt; // totalOrder - totalPaid
+  final Decimal debt; // totalOrder - totalPaid (negative = advance)
 
   DebtSummary({
     required this.partnerId,
@@ -33,7 +33,17 @@ class DebtSummary {
     required this.debt,
   });
 
-  bool get isFullyPaid => debt <= Decimal.zero;
+  /// Debt > 0 means partner owes money
+  bool get hasDebt => debt > Decimal.zero;
+
+  /// Debt < 0 means partner has advance (overpaid)
+  bool get hasAdvance => debt < Decimal.zero;
+
+  /// Advance amount (absolute value of negative debt)
+  Decimal get advance => hasAdvance ? -debt : Decimal.zero;
+
+  /// Display-friendly remaining (debt or 0 if overpaid)
+  Decimal get displayDebt => hasDebt ? debt : Decimal.zero;
 
   String get debtDisplay => AppFormatters.currency(debt);
   String get totalOrderDisplay => AppFormatters.currency(totalOrder);
@@ -46,10 +56,11 @@ class DebtOrderDetail {
   final String orderType; // 'buy' or 'sell'
   final Decimal subtotal;
   final Decimal totalPaid;
-  final Decimal remaining; // subtotal - totalPaid
+  final Decimal remaining; // subtotal - totalPaid (negative = overpaid)
   final String note;
   final DateTime orderDate;
   final String? sessionId;
+  final DateTime? lastPaymentDate;
 
   DebtOrderDetail({
     required this.orderId,
@@ -60,9 +71,20 @@ class DebtOrderDetail {
     required this.note,
     required this.orderDate,
     this.sessionId,
+    this.lastPaymentDate,
   });
 
+  /// Has remaining debt to pay
+  bool get hasDebt => remaining > Decimal.zero;
+
+  /// Fully paid exactly or overpaid
   bool get isFullyPaid => remaining <= Decimal.zero;
+
+  /// Overpaid (advance)
+  bool get isOverpaid => remaining < Decimal.zero;
+
+  /// Advance amount (absolute of negative remaining)
+  Decimal get overpaidAmount => isOverpaid ? -remaining : Decimal.zero;
 }
 
 // === REPOSITORY ===
@@ -124,6 +146,7 @@ class DebtRepository {
         note: row['orderNote'] as String,
         orderDate: row['orderDate'] as DateTime,
         sessionId: row['sessionId'] as String?,
+        lastPaymentDate: row['lastPaymentDate'] as DateTime?,
       );
     }).toList();
   }
@@ -133,6 +156,7 @@ class DebtRepository {
     required String orderId,
     required int amountInCents,
     String note = '',
+    DateTime? paymentDate,
   }) async {
     await _dao.insertPayment(
       PaymentsCompanion.insert(
@@ -140,7 +164,19 @@ class DebtRepository {
         orderId: orderId,
         amountInCents: amountInCents,
         note: Value(note),
+        createdAt: Value(paymentDate ?? DateTime.now()),
       ),
     );
+  }
+
+  /// Delete a specific payment
+  Future<void> deletePayment(String paymentId) async {
+    await _dao.deletePayment(paymentId);
+  }
+
+  /// Delete an order and all its payments from debt
+  Future<void> deleteDebtOrder(String orderId) async {
+    await _dao.deletePaymentsForOrder(orderId);
+    await _dao.deleteOrder(orderId);
   }
 }

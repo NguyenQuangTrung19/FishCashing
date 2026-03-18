@@ -23,14 +23,16 @@ class DebtPaymentAdded extends DebtEvent {
   final String orderId;
   final int amountInCents;
   final String note;
+  final DateTime? paymentDate;
 
   const DebtPaymentAdded({
     required this.orderId,
     required this.amountInCents,
     this.note = '',
+    this.paymentDate,
   });
   @override
-  List<Object?> get props => [orderId, amountInCents, note];
+  List<Object?> get props => [orderId, amountInCents, note, paymentDate];
 }
 
 class DebtPartnerDetailRequested extends DebtEvent {
@@ -38,6 +40,13 @@ class DebtPartnerDetailRequested extends DebtEvent {
   const DebtPartnerDetailRequested(this.partnerId);
   @override
   List<Object?> get props => [partnerId];
+}
+
+class DebtOrderDeleted extends DebtEvent {
+  final String orderId;
+  const DebtOrderDeleted(this.orderId);
+  @override
+  List<Object?> get props => [orderId];
 }
 
 // === STATE ===
@@ -93,6 +102,7 @@ class DebtBloc extends Bloc<DebtEvent, DebtState> {
     on<DebtLoadRequested>(_onLoad);
     on<DebtPaymentAdded>(_onPaymentAdded);
     on<DebtPartnerDetailRequested>(_onPartnerDetail);
+    on<DebtOrderDeleted>(_onOrderDeleted);
   }
 
   Future<void> _onLoad(
@@ -125,6 +135,7 @@ class DebtBloc extends Bloc<DebtEvent, DebtState> {
         orderId: event.orderId,
         amountInCents: event.amountInCents,
         note: event.note,
+        paymentDate: event.paymentDate,
       );
       // Reload both debt summaries and partner detail
       add(const DebtLoadRequested());
@@ -149,6 +160,25 @@ class DebtBloc extends Bloc<DebtEvent, DebtState> {
         partnerOrders: orders,
         selectedPartnerId: event.partnerId,
       ));
+    } catch (e) {
+      emit(state.copyWith(
+        status: DebtStatus.error,
+        errorMessage: e.toString(),
+      ));
+    }
+  }
+
+  Future<void> _onOrderDeleted(
+    DebtOrderDeleted event,
+    Emitter<DebtState> emit,
+  ) async {
+    try {
+      await _repository.deleteDebtOrder(event.orderId);
+      // Reload both debt summaries and partner detail
+      add(const DebtLoadRequested());
+      if (state.selectedPartnerId != null) {
+        add(DebtPartnerDetailRequested(state.selectedPartnerId!));
+      }
     } catch (e) {
       emit(state.copyWith(
         status: DebtStatus.error,

@@ -259,6 +259,7 @@ class _ProductPageState extends State<ProductPage> {
                                         ),
                                       );
                                 },
+                                onDelete: () => _confirmDelete(context, product),
                               );
                             },
                           );
@@ -447,6 +448,37 @@ class _ProductPageState extends State<ProductPage> {
       ),
     );
   }
+
+  void _confirmDelete(BuildContext context, ProductModel product) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xóa sản phẩm'),
+        content: Text(
+          'Bạn có chắc muốn xóa "${product.name}"?\n\n'
+          'Lưu ý: Sản phẩm đã có trong đơn hàng sẽ không bị ảnh hưởng.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () {
+              context.read<ProductBloc>().add(
+                    ProductDeleteRequested(id: product.id),
+                  );
+              Navigator.pop(ctx);
+            },
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Product card for grid view
@@ -454,11 +486,13 @@ class _ProductCard extends StatelessWidget {
   final ProductModel product;
   final VoidCallback onEdit;
   final VoidCallback onToggle;
+  final VoidCallback onDelete;
 
   const _ProductCard({
     required this.product,
     required this.onEdit,
     required this.onToggle,
+    required this.onDelete,
   });
 
   @override
@@ -540,6 +574,19 @@ class _ProductCard extends StatelessWidget {
                           ),
                     ),
                   ),
+                  InkWell(
+                    onTap: onDelete,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(
+                        Icons.delete_outline,
+                        size: 20,
+                        color: colorScheme.error,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
                   InkWell(
                     onTap: onToggle,
                     borderRadius: BorderRadius.circular(8),

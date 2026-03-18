@@ -13,6 +13,7 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     on<ProductCreateRequested>(_onCreate);
     on<ProductUpdateRequested>(_onUpdate);
     on<ProductToggleRequested>(_onToggle);
+    on<ProductDeleteRequested>(_onDelete);
   }
 
   Future<void> _onLoad(
@@ -81,6 +82,21 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
   ) async {
     try {
       await _repository.toggleActive(event.id, event.isActive);
+      add(const ProductsLoadRequested());
+    } catch (e) {
+      emit(state.copyWith(
+        status: ProductStatus.error,
+        errorMessage: e.toString(),
+      ));
+    }
+  }
+
+  Future<void> _onDelete(
+    ProductDeleteRequested event,
+    Emitter<ProductState> emit,
+  ) async {
+    try {
+      await _repository.delete(event.id);
       add(const ProductsLoadRequested());
     } catch (e) {
       emit(state.copyWith(

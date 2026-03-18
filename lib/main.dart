@@ -33,7 +33,6 @@ import 'package:fishcash_pos/presentation/debt/bloc/debt_bloc.dart';
 import 'package:fishcash_pos/core/theme/theme_notifier.dart';
 import 'package:fishcash_pos/core/services/api_client.dart';
 import 'package:fishcash_pos/core/services/sync_service.dart';
-import 'package:fishcash_pos/core/services/sync_socket_service.dart';
 import 'package:fishcash_pos/presentation/sync/bloc/sync_bloc.dart';
 
 void main() {
@@ -68,13 +67,6 @@ void main() {
     syncDao: database.syncDao,
   );
 
-  // Initialize realtime sync socket
-  final syncSocketService = SyncSocketService();
-
-  // Auto-push: listen to any database table change → notify socket → debounce → push
-  database.tableUpdates().listen((_) {
-    syncSocketService.notifyLocalChange();
-  });
 
   runApp(
     MultiRepositoryProvider(
@@ -89,7 +81,6 @@ void main() {
         RepositoryProvider.value(value: debtRepository),
         RepositoryProvider.value(value: apiClient),
         RepositoryProvider.value(value: syncService),
-        RepositoryProvider.value(value: syncSocketService),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -133,7 +124,6 @@ void main() {
             create: (_) => ConnectionBloc(
               api: apiClient,
               syncService: syncService,
-              socketService: syncSocketService,
             )..add(const ConnectionInitRequested()),
           ),
         ],
