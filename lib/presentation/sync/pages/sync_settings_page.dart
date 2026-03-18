@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fishcash_pos/core/theme/ocean_theme.dart';
 import 'package:fishcash_pos/presentation/sync/bloc/sync_bloc.dart';
+import 'package:fishcash_pos/presentation/settings/bloc/store_info_bloc.dart';
 
 class SyncSettingsPage extends StatefulWidget {
   const SyncSettingsPage({super.key});
@@ -89,7 +90,13 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
       case ConnectionStatus.connected:
         icon = Icons.cloud_done;
         color = OceanTheme.oceanPrimary;
-        text = 'Đã kết nối — ${state.storeName ?? 'Cửa hàng'}';
+        // Use store name from StoreInfoBloc (editable in Settings)
+        final storeInfoState = context.watch<StoreInfoBloc>().state;
+        final infoName = storeInfoState.storeInfo?.name ?? '';
+        final displayName = infoName.isNotEmpty
+            ? infoName
+            : (state.storeName ?? 'Cửa hàng');
+        text = 'Đã kết nối — $displayName';
         break;
       case ConnectionStatus.loading:
         icon = Icons.hourglass_top;
@@ -172,16 +179,24 @@ class _SyncSettingsPageState extends State<SyncSettingsPage> {
   }
 
   Widget _buildStoreInfoCard(ServerConnectionState state) {
-    return Card(
-      child: Column(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.store_rounded),
-            title: Text(state.storeName ?? 'Cửa hàng'),
-            subtitle: Text('ID: ${state.storeId ?? 'N/A'}'),
+    return BlocBuilder<StoreInfoBloc, StoreInfoState>(
+      builder: (context, storeState) {
+        final infoName = storeState.storeInfo?.name ?? '';
+        final displayName = infoName.isNotEmpty
+            ? infoName
+            : (state.storeName ?? 'Cửa hàng');
+        return Card(
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.store_rounded),
+                title: Text(displayName),
+                subtitle: Text('ID: ${state.storeId ?? 'N/A'}'),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

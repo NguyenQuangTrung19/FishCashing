@@ -403,7 +403,7 @@ class _ProductCard extends StatelessWidget {
                     ),
                     keyboardType: TextInputType.number,
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
+                      FilteringTextInputFormatter.digitsOnly,
                       CurrencyInputFormatter(),
                     ],
                     validator: (v) {

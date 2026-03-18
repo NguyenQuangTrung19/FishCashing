@@ -404,71 +404,90 @@ class InvoiceService {
   }) {
     return pw.Container(
       width: double.infinity,
-      padding: const pw.EdgeInsets.all(16),
+      padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: pw.BoxDecoration(
         color: _brandDark,
         borderRadius: pw.BorderRadius.circular(8),
       ),
       child: pw.Column(
         children: [
+          // Top row: Logo | Store info | Code + Date
           pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.center,
+            crossAxisAlignment: pw.CrossAxisAlignment.center,
             children: [
-              pw.Image(
-                pw.MemoryImage(logoBytes),
-                width: 180,
-                fit: pw.BoxFit.contain,
+              // Left: Logo
+              pw.ClipRRect(
+                horizontalRadius: 6,
+                verticalRadius: 6,
+                child: pw.Image(
+                  pw.MemoryImage(logoBytes),
+                  width: 64,
+                  height: 64,
+                  fit: pw.BoxFit.contain,
+                ),
+              ),
+              pw.SizedBox(width: 12),
+              // Center: Store name + address + phone
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  mainAxisAlignment: pw.MainAxisAlignment.center,
+                  children: [
+                    if (storeName.isNotEmpty)
+                      pw.Text(storeName,
+                          style: fonts.style(
+                            fontSize: 14,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.white,
+                          )),
+                    if (storeAddress.isNotEmpty) ...[
+                      pw.SizedBox(height: 2),
+                      pw.Text(storeAddress,
+                          style: fonts.style(fontSize: 9, color: PdfColors.grey300)),
+                    ],
+                    if (storePhone.isNotEmpty) ...[
+                      pw.SizedBox(height: 1),
+                      pw.Text('SĐT: $storePhone',
+                          style: fonts.style(fontSize: 9, color: PdfColors.grey300)),
+                    ],
+                  ],
+                ),
+              ),
+              // Right: Code + Date
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.end,
+                mainAxisAlignment: pw.MainAxisAlignment.center,
+                children: [
+                  pw.Text('Mã: $invoiceCode',
+                      style: fonts.style(
+                        fontSize: 10,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.yellow100,
+                      )),
+                  pw.SizedBox(height: 2),
+                  pw.Text(subtitle,
+                      style: fonts.style(fontSize: 9, color: PdfColors.grey300)),
+                ],
               ),
             ],
           ),
-          // Store name
-          if (storeName.isNotEmpty) ...[
-            pw.SizedBox(height: 6),
-            pw.Text(storeName,
+          // Bottom: Title centered
+          pw.SizedBox(height: 8),
+          pw.Container(
+            padding:
+                const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            decoration: pw.BoxDecoration(
+              color: _brandPrimary,
+              borderRadius: pw.BorderRadius.circular(12),
+            ),
+            child: pw.Text(title,
                 style: fonts.style(
-                  fontSize: 14,
+                  fontSize: 11,
                   fontWeight: pw.FontWeight.bold,
                   color: PdfColors.white,
                   letterSpacing: 0.5,
                 )),
-          ],
-          // Store contact info
-          if (storeAddress.isNotEmpty || storePhone.isNotEmpty) ...[
-            pw.SizedBox(height: 3),
-            if (storeAddress.isNotEmpty)
-              pw.Text(storeAddress,
-                  style: fonts.style(fontSize: 9, color: PdfColors.grey300)),
-            if (storePhone.isNotEmpty)
-              pw.Text('SĐT: $storePhone',
-                  style: fonts.style(fontSize: 9, color: PdfColors.grey300)),
-          ],
-          pw.SizedBox(height: 6),
-          pw.Container(
-            padding:
-                const pw.EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-            decoration: pw.BoxDecoration(
-              color: _brandPrimary,
-              borderRadius: pw.BorderRadius.circular(20),
-            ),
-            child: pw.Text(title,
-                style: fonts.style(
-                  fontSize: 12,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.white,
-                  letterSpacing: 1,
-                )),
           ),
-          pw.SizedBox(height: 6),
-          // Invoice code
-          pw.Text('Mã: $invoiceCode',
-              style: fonts.style(
-                fontSize: 11,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.yellow100,
-              )),
-          pw.SizedBox(height: 4),
-          pw.Text(subtitle,
-              style: fonts.style(fontSize: 10, color: PdfColors.grey300)),
         ],
       ),
     );
@@ -1066,43 +1085,54 @@ class InvoiceService {
             children: [
               // Header
               pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
                 children: [
                   if (logoImage != null) ...[
-                    pw.Image(logoImage, width: 70, height: 70),
+                    pw.ClipRRect(
+                      horizontalRadius: 6,
+                      verticalRadius: 6,
+                      child: pw.Image(logoImage, width: 64, height: 64),
+                    ),
                     pw.SizedBox(width: 12),
                   ],
                   pw.Expanded(
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      mainAxisAlignment: pw.MainAxisAlignment.center,
                       children: [
                         pw.Text(storeName,
                             style: fonts.style(
-                                fontSize: 16,
+                                fontSize: 14,
                                 fontWeight: pw.FontWeight.bold,
                                 color: _brandDark)),
-                        if (storeAddress.isNotEmpty)
+                        if (storeAddress.isNotEmpty) ...[
+                          pw.SizedBox(height: 2),
                           pw.Text(storeAddress,
                               style:
                                   fonts.style(fontSize: 9, color: PdfColors.grey700)),
-                        if (storePhone.isNotEmpty)
+                        ],
+                        if (storePhone.isNotEmpty) ...[
+                          pw.SizedBox(height: 1),
                           pw.Text('ĐT: $storePhone',
                               style:
                                   fonts.style(fontSize: 9, color: PdfColors.grey700)),
+                        ],
                       ],
                     ),
                   ),
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    mainAxisAlignment: pw.MainAxisAlignment.center,
                     children: [
                       pw.Text('BẢNG CÔNG NỢ',
                           style: fonts.style(
-                              fontSize: 14,
+                              fontSize: 11,
                               fontWeight: pw.FontWeight.bold,
                               color: PdfColor.fromInt(0xFFD32F2F))),
                       pw.SizedBox(height: 4),
                       pw.Text('Mã: $code',
-                          style: fonts.style(fontSize: 9, color: PdfColors.grey700)),
+                          style: fonts.style(fontSize: 10, color: PdfColors.grey700)),
+                      pw.SizedBox(height: 2),
                       pw.Text(
                           'Ngày: ${DateFormat('dd/MM/yyyy HH:mm').format(now)}',
                           style: fonts.style(fontSize: 9, color: PdfColors.grey700)),
@@ -1312,38 +1342,48 @@ class InvoiceService {
             children: [
               // Header
               pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
                 children: [
                   if (logoImage != null) ...[
-                    pw.Image(logoImage, width: 70, height: 70),
+                    pw.ClipRRect(
+                      horizontalRadius: 6,
+                      verticalRadius: 6,
+                      child: pw.Image(logoImage, width: 64, height: 64),
+                    ),
                     pw.SizedBox(width: 12),
                   ],
                   pw.Expanded(
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      mainAxisAlignment: pw.MainAxisAlignment.center,
                       children: [
                         pw.Text(storeName,
                             style: fonts.style(
-                                fontSize: 16,
+                                fontSize: 14,
                                 fontWeight: pw.FontWeight.bold,
                                 color: _brandDark)),
-                        if (storeAddress.isNotEmpty)
+                        if (storeAddress.isNotEmpty) ...[
+                          pw.SizedBox(height: 2),
                           pw.Text(storeAddress,
                               style: fonts.style(
                                   fontSize: 9, color: PdfColors.grey700)),
-                        if (storePhone.isNotEmpty)
+                        ],
+                        if (storePhone.isNotEmpty) ...[
+                          pw.SizedBox(height: 1),
                           pw.Text('ĐT: $storePhone',
                               style: fonts.style(
                                   fontSize: 9, color: PdfColors.grey700)),
+                        ],
                       ],
                     ),
                   ),
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    mainAxisAlignment: pw.MainAxisAlignment.center,
                     children: [
                       pw.Text('TÓM TẮT CÔNG NỢ',
                           style: fonts.style(
-                              fontSize: 14,
+                              fontSize: 11,
                               fontWeight: pw.FontWeight.bold,
                               color: _brandDark)),
                       pw.SizedBox(height: 4),

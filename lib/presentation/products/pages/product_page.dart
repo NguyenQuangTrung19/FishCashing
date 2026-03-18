@@ -363,7 +363,7 @@ class _ProductPageState extends State<ProductPage> {
                           ),
                           keyboardType: TextInputType.number,
                           inputFormatters: [
-                            FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
+                            FilteringTextInputFormatter.digitsOnly,
                             CurrencyInputFormatter(),
                           ],
                           validator: (value) {
